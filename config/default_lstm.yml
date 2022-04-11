@@ -1,0 +1,17 @@
+device: cpu
+model_name: ModelLSTM
+model_args:
+  log: True
+  hidden_dim: 256
+  xavier_init: True
+  out_act: sigmoid
+dataset_args:
+  d_type: train
+  normalize: True
+  sequence_length: 200
+dataloader_args:
+  num_workers: 0
+  batch_size: 32
+  shuffle: False
+train_epochs: 50
+evaluation: None

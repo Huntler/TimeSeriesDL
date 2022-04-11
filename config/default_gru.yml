@@ -1,0 +1,19 @@
+device: cpu
+model_name: ModelGRU
+model_args:
+  log: True
+  n_layers: 2
+  hidden_dim: 256
+  dropout: 0.1
+  xavier_init: True
+  out_act: sigmoid
+dataset_args:
+  d_type: train
+  normalize: True
+  sequence_length: 250
+dataloader_args:
+  num_workers: 4
+  batch_size: 4
+  shuffle: False
+train_epochs: 10
+evaluation: None
