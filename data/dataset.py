@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
 import scipy.io
 import torch
@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, d_type: str = "train", normalize: bool = True,
+    def __init__(self, d_type: str = "train", normalize: bool = True, bounds: Tuple[int] = (0, 1),
                  sequence_length: int = 1, precision: np.dtype = np.float32):
         super(Dataset, self).__init__()
 
@@ -20,7 +20,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # normalize the dataset between values of o to 1
         if normalize:
-            _scaler = MinMaxScaler()
+            _scaler = MinMaxScaler(feature_range=bounds)
             _scaler.fit(self._mat)
             self._mat = _scaler.transform(self._mat)
 

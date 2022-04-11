@@ -11,6 +11,13 @@ from torch.utils.data import DataLoader
 import argparse
 
 
+# TODO: add dropout to LSTM
+# TODO: add multiple LSTM layers (currently only on available)
+# TODO: add dataset split into train and validation set (including tensorboard logging)
+# TODO: add visualization methods to plot our dataset (either using matplotlib or tensorboard logging)
+# FIXME: fix GRU model in case n_samples % batch_size != 0
+
+
 config_dict = None
 def train():
     # define parameters (depending on device, lower the precision to save memory)
@@ -83,4 +90,4 @@ if __name__ == "__main__":
 
     config_dict = config.get_args(args.config)
     train()
-    load()
+    # load()

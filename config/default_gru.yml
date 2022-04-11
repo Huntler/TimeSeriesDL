@@ -4,16 +4,16 @@ model_args:
   log: True
   n_layers: 2
   hidden_dim: 256
-  dropout: 0.1
+  dropout: 0.2
   xavier_init: True
   out_act: sigmoid
 dataset_args:
   d_type: train
   normalize: True
-  sequence_length: 250
+  sequence_length: 200
 dataloader_args:
   num_workers: 4
-  batch_size: 4
-  shuffle: False
-train_epochs: 10
+  batch_size: 32
+  shuffle: True
+train_epochs: 32
 evaluation: None

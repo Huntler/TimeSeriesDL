@@ -8,10 +8,11 @@ model_args:
 dataset_args:
   d_type: train
   normalize: True
+  bounds: [0, 1]
   sequence_length: 200
 dataloader_args:
   num_workers: 0
-  batch_size: 32
+  batch_size: 20
   shuffle: False
-train_epochs: 50
+train_epochs: 40
 evaluation: None

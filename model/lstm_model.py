@@ -120,10 +120,11 @@ class LstmModel(BaseModel):
                     output = torch.relu(x)
                 case "sigmoid":
                     output = torch.sigmoid(x)
+                case "tanh":
+                    output = torch.tanh(x)
                 case _:
                     raise ArgumentError(
-                        "Wrong output actiavtion specified (relu | sigmoid).")
-                # FIXME: maybe tanh?
+                        "Wrong output actiavtion specified (relu | sigmoid | tanh).")
             
             output_batch[i, :, :] = output
         

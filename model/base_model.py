@@ -42,13 +42,14 @@ class BaseModel(nn.Module):
     def load(self, path) -> None:
         raise NotImplementedError()
 
-    def forward(self, x):
+    def forward(self, X, future_steps: int = 1):
         """
         This method performs the forward call on the neural network 
         architecture.
 
         Args:
-            x (Any): The input passed to the defined neural network.
+            X (Any): The input passed to the defined neural network.
+            future_steps (int, optional): The amount of steps predicted.
 
         Raises:
             NotImplementedError: The Base model has not implementation 
@@ -84,10 +85,17 @@ class BaseModel(nn.Module):
         self.eval()
         self._writer.flush()
 
-    def predict(self, X) -> List:
-        out = []
+    def predict(self, X, future_steps: int = 1) -> List:
+        """This method only predicts future steps based on the given curve described by the datapoints X.
+
+        Args:
+            X (_type_): The datapoints.
+            future_steps (int, optional): The amount of steps to look into future. Defaults to 1.
+
+        Returns:
+            List: The prediction.
+        """
         with torch.no_grad():
-            pred_y = self(X)
-            out += pred_y
+            out = self(X)
 
         return out
