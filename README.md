@@ -2,7 +2,7 @@
 Repository of the first assignment of the deep learning course (University Maastricht).
 
 ## Setup
-Install (Miniconda)[https://docs.conda.io/en/latest/miniconda.html] on your system and execute the follwing command afterwards.
+Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) on your system and execute the follwing command afterwards.
 
 ```$ conda env create -f environment.yml```
 
