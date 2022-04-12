@@ -39,16 +39,16 @@ evaluation: None
 ```
 
 ## Features
-[x] GPU support for CUDA capable graphic cards
-[x] Configuration management
-[x] LSTM
-[ ] GRU
-[x] Xavier weight initialization
-[x] ReLU, Sigmoid & Tanh
-[ ] Dropout
-[x] Tensorboard logging, model saving & more
-[x] Dataset normalization & transformation
-[x] Dataset random shuffle
-[ ] Split into train- / validationset
-[x] Prediction of 'x' steps into future
-[ ] visualization of dataset / prediction
+- [x] GPU support for CUDA capable graphic cards
+- [x] Configuration management
+- [x] LSTM
+- [ ] GRU
+- [x] Xavier weight initialization
+- [x] ReLU, Sigmoid & Tanh
+- [ ] Dropout
+- [x] Tensorboard logging, model saving & more
+- [x] Dataset normalization & transformation
+- [x] Dataset random shuffle
+- [ ] Split into train- / validationset
+- [x] Prediction of 'x' steps into future
+- [ ] visualization of dataset / prediction
