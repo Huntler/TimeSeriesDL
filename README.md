@@ -54,6 +54,8 @@ evaluation: None
 - [x] Xavier weight initialization
 - [x] ReLU, Sigmoid & Tanh
 - [ ] Dropout
+- [ ] Variable learning rate (using decay)
+- [ ] Try other optimizers, like Ada, RMSprop or Nag (using config system)
 - [x] Tensorboard logging, model saving & more
 - [x] Dataset normalization & transformation
 - [x] Dataset random shuffle
