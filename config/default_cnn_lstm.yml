@@ -1,0 +1,24 @@
+device: cpu
+model_name: ModelCNN-LSTM
+model_args:
+  log: True
+  lr: 0.02
+  lr_decay: 0.9
+  adam_betas: [0.3, 0.5]
+  kernel_size: 15
+  stride: 1
+  padding: 1
+  hidden_dim: 256
+  xavier_init: True
+  out_act: sigmoid
+dataset_args:
+  d_type: train
+  normalize: True
+  bounds: [0, 1]
+  sequence_length: 200
+dataloader_args:
+  num_workers: 0
+  batch_size: 20
+  shuffle: True
+train_epochs: 100
+evaluation: None

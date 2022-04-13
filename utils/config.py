@@ -2,6 +2,7 @@ from typing import Dict
 import yaml
 
 from model.base_model import BaseModel
+from model.cnn_lstm_model import CnnLstmModel
 from model.gru_model import GruModel
 from model.lstm_model import LstmModel
 
@@ -60,3 +61,4 @@ class Config:
 config = Config()
 config.register_model("ModelGRU", GruModel)
 config.register_model("ModelLSTM", LstmModel)
+config.register_model("ModelCNN-LSTM", CnnLstmModel)
