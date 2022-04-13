@@ -28,7 +28,10 @@ def train():
 
     # load the data, normalize them and convert them to tensor
     dataset = Dataset(**config_dict["dataset_args"])
-    dataloader = DataLoader(dataset, **config_dict["dataloader_args"])
+    split_sizes = [int(len(dataset) * 0.8), int(len(dataset) * 0.2)]
+    trainset, valset = torch.utils.data.random_split(dataset, split_sizes)
+    trainloader = DataLoader(trainset, **config_dict["dataloader_args"])
+    valloader = DataLoader(valset, **config_dict["dataloader_args"])
     
     # create model
     model_name = config_dict["model_name"]
@@ -45,7 +48,7 @@ def train():
     config.store_args(f"{model.log_path}/config.yml", config_dict)
 
     # train the model
-    model.learn(dataloader, epochs=config_dict["train_epochs"])
+    model.learn(train=trainloader, validate=valloader, epochs=config_dict["train_epochs"])
     model.save_to_default()
 
 

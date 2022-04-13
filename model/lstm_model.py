@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 class LstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
-                 lr: float = 1e-3, lr_decay: float = 9e-1, betas: List[float] = [9e-1, 999e-3],
+                 lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -65,7 +65,7 @@ class LstmModel(BaseModel):
 
         # define loss function, optimizer and scheduler for the learning rate
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=betas)
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     @property

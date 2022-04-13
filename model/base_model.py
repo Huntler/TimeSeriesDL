@@ -107,8 +107,21 @@ class BaseModel(nn.Module):
         self._writer.flush()
 
     def validate(self, dataloader) -> float:
-        # TODO
-        pass
+        """Method validates model's accuracy based on the given data.
+
+        Args:
+            dataloader (_type_): The dataloader which contains value, not used for training.
+
+        Returns:
+            float: The model's accuracy.
+        """
+        accuracy = []
+        for X, y in dataloader:
+            _y = self.predict(X)
+            loss = self._loss_fn(_y, y)
+            accuracy.append(1 - loss.item())
+        
+        return np.mean(np.array(accuracy))
 
     def predict(self, X, future_steps: int = 1) -> List:
         """This method only predicts future steps based on the given curve described by the datapoints X.
