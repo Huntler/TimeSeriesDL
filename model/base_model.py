@@ -62,9 +62,9 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def learn(self, train, validate = None, epochs: int = 1):
-        for e in range(epochs):
+        for e in tqdm(range(epochs)):
             ep_losses = []
-            for X, y in tqdm(train):
+            for X, y in train:
                 losses = []
 
                 # run for a given amount of epochs
