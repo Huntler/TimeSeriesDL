@@ -13,7 +13,6 @@ import argparse
 
 # TODO: add dropout to LSTM
 # TODO: add multiple LSTM layers (currently only on available)
-# TODO: add dataset split into train and validation set (including tensorboard logging)
 # TODO: add visualization methods to plot our dataset (either using matplotlib or tensorboard logging)
 # FIXME: fix GRU model in case n_samples % batch_size != 0
 

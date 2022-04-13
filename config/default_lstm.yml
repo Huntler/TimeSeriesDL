@@ -3,7 +3,7 @@ model_name: ModelLSTM
 model_args:
   log: True
   lr: 0.02
-  lr_decay: 0.7
+  lr_decay: 0.9
   adam_betas: [0.3, 0.5]
   hidden_dim: 256
   xavier_init: True
@@ -15,7 +15,7 @@ dataset_args:
   sequence_length: 200
 dataloader_args:
   num_workers: 0
-  batch_size: 10
-  shuffle: true
-train_epochs: 20
+  batch_size: 20
+  shuffle: True
+train_epochs: 100
 evaluation: None

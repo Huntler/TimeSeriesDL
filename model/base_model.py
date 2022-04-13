@@ -1,9 +1,12 @@
 from datetime import datetime
 from typing import List
-from torch.optim.lr_scheduler import _LRScheduler
+
 import numpy as np
 import torch
 from torch import nn
+from torch.nn import Module
+from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -11,7 +14,7 @@ from tqdm import tqdm
 class BaseModel(nn.Module):
     def __init__(self) -> None:
         super(BaseModel, self).__init__()
-        
+
         # enable tensorboard
         if self._writer is None:
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
@@ -25,8 +28,11 @@ class BaseModel(nn.Module):
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
 
+        # define object which where defined by children of this class
         self._scheduler: _LRScheduler = None
-    
+        self._optim: Optimizer = None
+        self._loss_fn: Module = None
+
     @property
     def log_path(self) -> str:
         return self._tb_path
@@ -42,7 +48,7 @@ class BaseModel(nn.Module):
         model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
         torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
-    
+
     def load(self, path) -> None:
         raise NotImplementedError()
 
@@ -61,7 +67,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, train, validate = None, epochs: int = 1):
+    def learn(self, train, validate=None, epochs: int = 1):
         for e in tqdm(range(epochs)):
             ep_losses = []
             for X, y in train:
@@ -85,7 +91,8 @@ class BaseModel(nn.Module):
                 # log for the statistics
                 losses = np.mean(losses, axis=0)
                 ep_losses.append(losses)
-                self._writer.add_scalar("Train/loss", loss, self.__sample_position)
+                self._writer.add_scalar(
+                    "Train/loss", loss, self.__sample_position)
                 self.__sample_position += X.size(0)
 
             # if there is an adaptive learning rate (scheduler) available
@@ -100,28 +107,40 @@ class BaseModel(nn.Module):
 
             # runn a validation of the current model state
             if validate:
-                accuracy = self.validate(validate)
-                self._writer.add_scalar("Val/accuracy", accuracy, e)
- 
+                accuracy = self.validate(validate, e)
+
         self.eval()
         self._writer.flush()
 
-    def validate(self, dataloader) -> float:
-        """Method validates model's accuracy based on the given data.
+    def validate(self, dataloader, log_step: int = -1) -> float:
+        """Method validates model's accuracy based on the given data. In validation, the model
+        only looks one step ahead.
 
         Args:
             dataloader (_type_): The dataloader which contains value, not used for training.
+            log_step (int, optional): The step of the logger, can be disabled by setting to -1.
 
         Returns:
             float: The model's accuracy.
         """
-        accuracy = []
+        accuracies = []
+        # predict all y's of the validation set and append the model's accuracy 
+        # to the list
         for X, y in dataloader:
             _y = self.predict(X)
             loss = self._loss_fn(_y, y)
-            accuracy.append(1 - loss.item())
-        
-        return np.mean(np.array(accuracy))
+            accuracies.append(1 - loss.item())
+
+        # calculate some statistics based on the data collected
+        accuracy = np.mean(np.array(accuracies))
+        variance = np.mean(np.var(np.array(accuracies)))
+
+        # log to the tensorboard if wanted
+        if log_step != -1:
+            self._writer.add_scalar("Val/accuracy_mean", accuracy, log_step)
+            self._writer.add_scalar("Val/accuracy_var", variance, log_step)
+
+        return accuracy
 
     def predict(self, X, future_steps: int = 1) -> List:
         """This method only predicts future steps based on the given curve described by the datapoints X.
