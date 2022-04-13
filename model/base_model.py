@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import List
+from torch.optim.lr_scheduler import _LRScheduler
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 
 class BaseModel(nn.Module):
@@ -22,6 +24,8 @@ class BaseModel(nn.Module):
         if torch.cuda.is_available():
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
+
+        self._scheduler: _LRScheduler = None
     
     @property
     def log_path(self) -> str:
@@ -57,33 +61,54 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, X, y, epochs: int = 1):
-        # measure history
-        losses = []
+    def learn(self, train, validate = None, epochs: int = 1):
+        for e in range(epochs):
+            ep_losses = []
+            for X, y in tqdm(train):
+                losses = []
 
-        # run for a given amount of epochs
-        with torch.cuda.amp.autocast(enabled=(self._device == "cuda")):
-            for e in range(0, epochs):
-                # perform the presiction and measure the loss between the prediction
-                # and the expected output
-                pred_y = self(X)
+                # run for a given amount of epochs
+                with torch.cuda.amp.autocast(enabled=(self._device == "cuda")):
+                    # perform the presiction and measure the loss between the prediction
+                    # and the expected output
+                    pred_y = self(X)
 
-                # calculate the gradient using backpropagation of the loss
-                loss = self._loss_fn(pred_y, y)
+                    # calculate the gradient using backpropagation of the loss
+                    loss = self._loss_fn(pred_y, y)
 
-                self._optim.zero_grad
-                loss.backward()
-                self._optim.step()
+                    self._optim.zero_grad
+                    loss.backward()
+                    self._optim.step()
 
-                losses.append(loss.item())
+                    losses.append(loss.item())
 
-        # log for the statistics
-        losses = np.mean(losses, axis=0)
-        self._writer.add_scalar("Train/loss", loss, self.__sample_position)
-        self.__sample_position += X.size(0)
+                # log for the statistics
+                losses = np.mean(losses, axis=0)
+                ep_losses.append(losses)
+                self._writer.add_scalar("Train/loss", loss, self.__sample_position)
+                self.__sample_position += X.size(0)
 
+            # if there is an adaptive learning rate (scheduler) available
+            if self._scheduler:
+                self._scheduler.step()
+                lr = self._scheduler.get_last_lr()[0]
+                self._writer.add_scalar("Train/learning_rate", lr, e)
+
+            # log for the statistics
+            ep_losses = np.mean(ep_losses)
+            self._writer.add_scalar("Train/epoch_loss", ep_losses, e)
+
+            # runn a validation of the current model state
+            if validate:
+                accuracy = self.validate(validate)
+                self._writer.add_scalar("Val/accuracy", accuracy, e)
+ 
         self.eval()
         self._writer.flush()
+
+    def validate(self, dataloader) -> float:
+        # TODO
+        pass
 
     def predict(self, X, future_steps: int = 1) -> List:
         """This method only predicts future steps based on the given curve described by the datapoints X.

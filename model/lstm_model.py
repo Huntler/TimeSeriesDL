@@ -1,14 +1,16 @@
 from argparse import ArgumentError
 from datetime import datetime
-from typing import Tuple
+from typing import List, Tuple
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from .base_model import BaseModel
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class LstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
+                 lr: float = 1e-3, lr_decay: float = 9e-1, betas: List[float] = [9e-1, 999e-3],
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -56,11 +58,15 @@ class LstmModel(BaseModel):
             self.__linear_2.weight = torch.nn.init.xavier_normal_(
                 self.__linear_2.weight)
         else:
-            self.__linear_1.weight = torch.nn.init.zeros_(self.__linear_1.weight)
-            self.__linear_2.weight = torch.nn.init.zeros_(self.__linear_2.weight)
+            self.__linear_1.weight = torch.nn.init.zeros_(
+                self.__linear_1.weight)
+            self.__linear_2.weight = torch.nn.init.zeros_(
+                self.__linear_2.weight)
 
+        # define loss function, optimizer and scheduler for the learning rate
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters())
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=betas)
+        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     @property
     def precision(self) -> torch.dtype:
@@ -76,8 +82,10 @@ class LstmModel(BaseModel):
         Returns:
             Tuple[torch.tensor]: The cell states as tuple (hidden, cell)
         """
-        h_t = torch.zeros(batch_size, n_samples, self.__hidden_dim, dtype=self.__precision)
-        c_t = torch.zeros(batch_size, n_samples, self.__hidden_dim, dtype=self.__precision)
+        h_t = torch.zeros(batch_size, n_samples,
+                          self.__hidden_dim, dtype=self.__precision)
+        c_t = torch.zeros(batch_size, n_samples,
+                          self.__hidden_dim, dtype=self.__precision)
 
         return h_t, c_t
 
@@ -125,9 +133,9 @@ class LstmModel(BaseModel):
                 case _:
                     raise ArgumentError(
                         "Wrong output actiavtion specified (relu | sigmoid | tanh).")
-            
+
             output_batch[i, :, :] = output
-        
+
         return output_batch, (h, c)
 
     def forward(self, X, future_steps: int = 1):
@@ -135,7 +143,7 @@ class LstmModel(BaseModel):
 
         # reset the hidden states for each sequence we train
         h, c = self.__init_hidden_states(batch_size, n_samples)
-        
+
         # fit the hidden states to the given batch X
         output_batch, (h, c) = self.network(X, h, c)
 

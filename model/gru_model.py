@@ -1,13 +1,16 @@
 from argparse import ArgumentError
 from datetime import datetime
+from typing import List
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from .base_model import BaseModel
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class GruModel(BaseModel):
     def __init__(self, input_size: int, out_act: str = "relu", xavier_init: bool = False, n_layers: int = 2,
-                 hidden_dim: int = 64, dropout: float = 0.1, log: bool = True, 
+                 hidden_dim: int = 64, dropout: float = 0.1, log: bool = True,
+                 lr: float = 1e-3, lr_decay: float = 9e-1, betas: List[float] = [9e-1, 999e-3],
                  precision: torch.dtype = torch.float16) -> None:
         # if logging enabled, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -50,15 +53,27 @@ class GruModel(BaseModel):
             self.__linear_2.weight = torch.nn.init.xavier_normal_(
                 self.__linear_2.weight)
         else:
-            self.__linear_1.weight = torch.nn.init.zeros_(self.__linear_1.weight)
-            self.__linear_2.weight = torch.nn.init.zeros_(self.__linear_2.weight)
+            self.__linear_1.weight = torch.nn.init.zeros_(
+                self.__linear_1.weight)
+            self.__linear_2.weight = torch.nn.init.zeros_(
+                self.__linear_2.weight)
 
-        # FIXME: maybe activation function as hyperparameter
-        self.__activation = torch.nn.ELU()
+        # output from the last layer
+        match self.__output_activation:
+            case "relu":
+                self.__activation = lambda x: torch.relu(x)
+            case "sigmoid":
+                self.__activation = lambda x: torch.sigmoid(x)
+            case "tanh":
+                self.__activation = lambda x: torch.tanh(x)
+            case _:
+                raise ArgumentError(
+                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 
-        # FIXME: maybe as hyperparameter
+        # define loss function, optimizer and scheduler for the learning rate
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters())
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=betas)
+        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def __init_hidden_states(self, batch_size: int) -> torch.tensor:
         """Initializes the hidden cell state of our GRU layer. Either zero or 

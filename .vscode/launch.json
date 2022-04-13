@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: CNN-LSTM",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--config",
+                "config/default_cnn_lstm.yml"
+            ]
+        },
+        {
             "name": "Python: GRU",
             "type": "python",
             "request": "launch",

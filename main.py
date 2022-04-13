@@ -45,9 +45,7 @@ def train():
     config.store_args(f"{model.log_path}/config.yml", config_dict)
 
     # train the model
-    for X, y in tqdm(dataloader):
-        model.learn(X, y, epochs=config_dict["train_epochs"])
-
+    model.learn(dataloader, epochs=config_dict["train_epochs"])
     model.save_to_default()
 
 

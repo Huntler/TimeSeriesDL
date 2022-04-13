@@ -50,6 +50,7 @@ evaluation: None
 - [x] GPU support for CUDA capable graphic cards
 - [x] Configuration management
 - [x] LSTM
+- [ ] Use convolutional layers before passing values into the LSTM
 - [ ] GRU
 - [x] Xavier weight initialization
 - [x] ReLU, Sigmoid & Tanh
