@@ -11,6 +11,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 class LstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
+                 sequence_length: int = 1,
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -38,6 +39,7 @@ class LstmModel(BaseModel):
             self.__hidden_dim,
             dtype=self.__precision
         )
+        self.__batch_norm_0 = torch.nn.BatchNorm1d(self.__hidden_dim)
 
         # create the dense layers and initilize them based on our hyperparameters
         self.__linear_1 = torch.nn.Linear(
@@ -45,6 +47,7 @@ class LstmModel(BaseModel):
             32,
             dtype=self.__precision
         )
+        self.__batch_norm_1 = torch.nn.BatchNorm1d(32)
 
         self.__linear_2 = torch.nn.Linear(
             32,
@@ -64,7 +67,7 @@ class LstmModel(BaseModel):
                 self.__linear_2.weight)
 
         # define loss function, optimizer and scheduler for the learning rate
-        self._loss_fn = torch.nn.MSELoss()
+        self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
@@ -116,10 +119,13 @@ class LstmModel(BaseModel):
         for i, batch in enumerate(X):
             hidden = (h[i], c[i])
             out, hidden = self.__lstm_1(batch, hidden)
-
-            x = torch.relu(out)
-            x = self.__linear_1(x)
+            x = self.__batch_norm_0(out)
             x = torch.relu(x)
+
+            x = self.__linear_1(x)
+            x = self.__batch_norm_1(x)
+            x = torch.relu(x)
+
             x = self.__linear_2(x)
 
             # output from the last layer

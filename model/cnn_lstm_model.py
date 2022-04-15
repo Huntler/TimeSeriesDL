@@ -12,7 +12,8 @@ from .base_model import BaseModel
 class CnnLstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
-                 kernel_size: int = 15, stride: int = 1, padding: int = 0,
+                 kernel_size: int = 15, stride: int = 1, padding: int = 0, channels: int = 1,
+                 sequence_length: int = 1,
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -27,12 +28,14 @@ class CnnLstmModel(BaseModel):
         # initialize components using the parent class
         super(CnnLstmModel, self).__init__()
 
+        self.__sequence_length = sequence_length
         self.__input_size = input_size
 
         # CNN hyperparameters
         self.__kernel_size = kernel_size
         self.__stride = stride
         self.__padding = padding
+        self.__channels = channels
 
         # LSTM hyperparameters
         self.__hidden_dim = hidden_dim
@@ -45,12 +48,17 @@ class CnnLstmModel(BaseModel):
         # lstm1, linear, cnn are all layers in the network
         self.__conv_1 = torch.nn.Conv1d(
             in_channels=self.__input_size, 
-            out_channels=self.__input_size, 
+            out_channels=self.__channels, 
             kernel_size=self.__kernel_size, 
             stride=self.__stride, 
             padding=self.__padding, 
             dtype=self.__precision
         )
+
+        # size: [(W−K+2P)/S]+1
+        size = int(((self.__sequence_length - self.__kernel_size + 2 * self.__padding) / self.__stride) + 1)
+        self.__batch_norm = torch.nn.BatchNorm1d(size, momentum=None)
+        self.__cnn_activation = torch.nn.LeakyReLU()
 
         self.__lstm_1 = torch.nn.LSTMCell(
             self.__input_size,
@@ -80,7 +88,7 @@ class CnnLstmModel(BaseModel):
             self.__linear_1.weight = torch.nn.init.zeros_(self.__linear_1.weight)
             self.__linear_2.weight = torch.nn.init.zeros_(self.__linear_2.weight)
 
-        self._loss_fn = torch.nn.MSELoss()
+        self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
@@ -127,10 +135,12 @@ class CnnLstmModel(BaseModel):
         _, _, dim = X.shape
 
         # initial hidden and cell states
-        output_batch = torch.empty(batch_size, n_samples, dim)
+        output_batch = torch.empty(batch_size, n_samples, 1)
         for i, batch in enumerate(X):
             hidden = (h[i], c[i])
-            out, hidden = self.__lstm_1(batch, hidden)
+            x = torch.flatten(batch)
+            x = torch.unsqueeze(x, 1)
+            out, hidden = self.__lstm_1(x, hidden)
 
             # reduce the LSTM's output by using a few dense layers
             x = torch.relu(out)
@@ -159,12 +169,13 @@ class CnnLstmModel(BaseModel):
         x: torch.tensor = torch.transpose(X, 2, 1)
         x = self.__conv_1(x)
         x: torch.tensor = torch.transpose(x, 2, 1)
-        x = torch.relu(x)
+        x = self.__batch_norm(x)
+        x = self.__cnn_activation(x)
 
         # LSTM preparation
         # reset the hidden states for each sequence we train
         batch_size, n_samples, dim = x.shape
-        h, c = self.__init_hidden_states(batch_size, n_samples)
+        h, c = self.__init_hidden_states(batch_size, n_samples * dim)
 
         # LSTM forward pass
         output_batch, (h, c) = self.network(x, h, c)

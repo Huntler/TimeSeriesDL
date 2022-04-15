@@ -52,6 +52,7 @@ evaluation: None
 - [x] LSTM
 - [x] Use convolutional layers before passing values into the LSTM
 - [ ] GRU
+- [x] Batch normalization (LSTM & CNN + LSTM)
 - [x] Xavier weight initialization
 - [x] ReLU, Sigmoid & Tanh
 - [ ] Dropout

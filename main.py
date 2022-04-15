@@ -40,7 +40,8 @@ def train():
     # create model
     model_name = config_dict["model_name"]
     model: BaseModel = config.get_model(model_name)(
-        input_size=dataset.sample_size, **config_dict["model_args"])
+        input_size=dataset.sample_size, sequence_length=config_dict["dataset_args"]["sequence_length"], 
+        **config_dict["model_args"])
 
     # create the model and train it, if epochs > 0
     epochs = config_dict["train_epochs"]
@@ -81,7 +82,8 @@ def load():
     _config_dict["model_args"]["log"] = False
     model_class = config.get_model(name=config_dict["model_name"])
     model: BaseModel = model_class(
-        input_size=dataset.sample_size, precision=precision, **_config_dict["model_args"])
+        input_size=dataset.sample_size, sequence_length=config_dict["dataset_args"]["sequence_length"], 
+        precision=precision, **_config_dict["model_args"])
     model.load(path)
 
     # do the prediction
@@ -112,7 +114,9 @@ if __name__ == "__main__":
 
     if args.config:
         config_dict = config.get_args(args.config)
+        future_steps = 1
         train()
+        load()
 
     if args.load:
         config_dict = config.get_args(args.load)
