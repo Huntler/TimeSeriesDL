@@ -50,7 +50,7 @@ evaluation: None
 - [x] GPU support for CUDA capable graphic cards
 - [x] Configuration management
 - [x] LSTM
-- [ ] Use convolutional layers before passing values into the LSTM
+- [x] Use convolutional layers before passing values into the LSTM
 - [ ] GRU
 - [x] Xavier weight initialization
 - [x] ReLU, Sigmoid & Tanh
@@ -62,4 +62,4 @@ evaluation: None
 - [x] Dataset random shuffle
 - [x] Split into train- / validationset
 - [x] Prediction of 'x' steps into future
-- [ ] visualization of dataset / prediction
+- [x] visualization of dataset / prediction

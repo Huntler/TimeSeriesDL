@@ -153,6 +153,7 @@ class BaseModel(nn.Module):
             List: The prediction.
         """
         with torch.no_grad():
-            out = self(X)
+            out = self(X, future_steps=future_steps)
+            out = list(out.ravel().numpy())
 
         return out
