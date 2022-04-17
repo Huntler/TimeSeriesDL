@@ -73,6 +73,7 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def learn(self, train, validate=None, epochs: int = 1):
+        self.train()
         for e in tqdm(range(epochs)):
             ep_losses = []
             for X, y in train:
@@ -90,6 +91,7 @@ class BaseModel(nn.Module):
                     self._optim.zero_grad
                     loss.backward()
                     self._optim.step()
+                    # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
 
                     losses.append(loss.item())
 
@@ -112,7 +114,9 @@ class BaseModel(nn.Module):
 
             # runn a validation of the current model state
             if validate:
+                self.eval()
                 accuracy = self.validate(validate, e)
+                self.train()
 
         self.eval()
         self._writer.flush()

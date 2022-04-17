@@ -37,7 +37,7 @@ class Dataset(torch.utils.data.Dataset):
         y = y.astype(self._precision)
 
         # add a padding of 0s to begin
-        if index - 1 < self._seq:
+        if index < self._seq:
             X[self._seq - index:, :] = self._mat[:index, :]
             return X, y
 
