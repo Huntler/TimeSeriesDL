@@ -57,7 +57,7 @@ class CnnLstmModel(BaseModel):
 
         # size: [(W−K+2P)/S]+1
         size = int(((self.__sequence_length - self.__kernel_size + 2 * self.__padding) / self.__stride) + 1)
-        self.__batch_norm = torch.nn.BatchNorm1d(size, momentum=None)
+        self.__batch_norm_0 = torch.nn.BatchNorm1d(size, track_running_stats=False)
         self.__cnn_activation = torch.nn.LeakyReLU()
 
         self.__lstm_1 = torch.nn.LSTMCell(
@@ -65,6 +65,7 @@ class CnnLstmModel(BaseModel):
             self.__hidden_dim,
             dtype=self.__precision
         )
+        self.__batch_norm_1 = torch.nn.BatchNorm1d(self.__hidden_dim, track_running_stats=False)
 
         # create the dense layers and initilize them based on our hyperparameters
         self.__linear_1 = torch.nn.Linear(
@@ -72,6 +73,7 @@ class CnnLstmModel(BaseModel):
             64,
             dtype=self.__precision
         )
+        self.__batch_norm_2 = torch.nn.BatchNorm1d(64, track_running_stats=False)
 
         self.__linear_2 = torch.nn.Linear(
             64,
@@ -141,10 +143,12 @@ class CnnLstmModel(BaseModel):
             x = torch.flatten(batch)
             x = torch.unsqueeze(x, 1)
             out, hidden = self.__lstm_1(x, hidden)
+            x = self.__batch_norm_1(out)
+            x = torch.relu(x)
 
             # reduce the LSTM's output by using a few dense layers
-            x = torch.relu(out)
             x = self.__linear_1(x)
+            x = self.__batch_norm_2(x)
             x = torch.relu(x)
             x = self.__linear_2(x)
 
@@ -169,7 +173,7 @@ class CnnLstmModel(BaseModel):
         x: torch.tensor = torch.transpose(X, 2, 1)
         x = self.__conv_1(x)
         x: torch.tensor = torch.transpose(x, 2, 1)
-        x = self.__batch_norm(x)
+        x = self.__batch_norm_0(x)
         x = self.__cnn_activation(x)
 
         # LSTM preparation
