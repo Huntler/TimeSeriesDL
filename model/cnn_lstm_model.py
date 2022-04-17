@@ -61,7 +61,7 @@ class CnnLstmModel(BaseModel):
         self.__cnn_activation = torch.nn.LeakyReLU()
 
         self.__lstm_1 = torch.nn.LSTMCell(
-            self.__input_size,
+            self.__channels,
             self.__hidden_dim,
             dtype=self.__precision
         )
@@ -77,6 +77,13 @@ class CnnLstmModel(BaseModel):
 
         self.__linear_2 = torch.nn.Linear(
             64,
+            self.__channels,
+            dtype=self.__precision
+        )
+        self.__batch_norm_3 = torch.nn.BatchNorm1d(self.__channels, track_running_stats=False)
+        
+        self.__linear_3 = torch.nn.Linear(
+            self.__channels,
             1,
             dtype=self.__precision
         )
@@ -86,9 +93,12 @@ class CnnLstmModel(BaseModel):
                 self.__linear_1.weight)
             self.__linear_2.weight = torch.nn.init.xavier_normal_(
                 self.__linear_2.weight)
+            self.__linear_3.weight = torch.nn.init.xavier_normal_(
+                self.__linear_3.weight)
         else:
             self.__linear_1.weight = torch.nn.init.zeros_(self.__linear_1.weight)
             self.__linear_2.weight = torch.nn.init.zeros_(self.__linear_2.weight)
+            self.__linear_3.weight = torch.nn.init.zeros_(self.__linear_3.weight)
 
         self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
@@ -98,7 +108,7 @@ class CnnLstmModel(BaseModel):
     def precision(self) -> torch.dtype:
         return self.__precision
 
-    def __init_hidden_states(self, batch_size: int, n_samples: int) -> Tuple[torch.tensor]:
+    def __init_hidden_states(self, batch_size: int) -> Tuple[torch.tensor]:
         """This method is used to initialize the hidden cell states of a LSTM layer.
 
         Args:
@@ -108,8 +118,8 @@ class CnnLstmModel(BaseModel):
         Returns:
             Tuple[torch.tensor]: The cell states as tuple (hidden, cell)
         """
-        h_t = torch.zeros(batch_size, n_samples, self.__hidden_dim, dtype=self.__precision)
-        c_t = torch.zeros(batch_size, n_samples, self.__hidden_dim, dtype=self.__precision)
+        h_t = torch.zeros(batch_size, self.__hidden_dim, dtype=self.__precision)
+        c_t = torch.zeros(batch_size, self.__hidden_dim, dtype=self.__precision)
 
         return h_t, c_t
 
@@ -133,40 +143,23 @@ class CnnLstmModel(BaseModel):
         Returns:
             _type_: The output of all hidden states and the current hidden and cell states.
         """
-        batch_size, n_samples, _ = h.shape
-        _, _, dim = X.shape
-
-        # initial hidden and cell states
-        output_batch = torch.empty(batch_size, n_samples, 1)
-        for i, batch in enumerate(X):
-            hidden = (h[i], c[i])
-            x = torch.flatten(batch)
-            x = torch.unsqueeze(x, 1)
-            out, hidden = self.__lstm_1(x, hidden)
-            x = self.__batch_norm_1(out)
-            x = torch.relu(x)
-
-            # reduce the LSTM's output by using a few dense layers
-            x = self.__linear_1(x)
-            x = self.__batch_norm_2(x)
-            x = torch.relu(x)
-            x = self.__linear_2(x)
-
-            # output from the last layer
-            match self.__output_activation:
-                case "relu":
-                    output = torch.relu(x)
-                case "sigmoid":
-                    output = torch.sigmoid(x)
-                case "tanh":
-                    output = torch.tanh(x)
-                case _:
-                    raise ArgumentError(
-                        "Wrong output actiavtion specified (relu | sigmoid | tanh).")
+        # iterate over each time step and predict the output using the LSTM
+        for input_t in X.split(1, dim=1):
+            h, c = self.__lstm_1(input_t[:, 0, :], (h, c))
             
-            output_batch[i, :, :] = output
+        x = self.__batch_norm_1(h)
+        x = torch.relu(x)
+
+        # reduce the LSTM's output by using a few dense layers
+        x = self.__linear_1(x)
+        x = self.__batch_norm_2(x)
+        x = torch.relu(x)
+
+        x = self.__linear_2(x)
+        x = self.__batch_norm_3(x)
+        output = torch.relu(x)
         
-        return output_batch, (h, c)
+        return output, (h, c)
 
     def forward(self, X, future_steps: int = 1):
         # CNN forward pass
@@ -179,15 +172,36 @@ class CnnLstmModel(BaseModel):
         # LSTM preparation
         # reset the hidden states for each sequence we train
         batch_size, n_samples, dim = x.shape
-        h, c = self.__init_hidden_states(batch_size, n_samples * dim)
+        h, c = self.__init_hidden_states(batch_size)
 
         # LSTM forward pass
         output_batch, (h, c) = self.network(x, h, c)
+        output_batch = torch.unsqueeze(output_batch, 1) 
 
         # look several steps ahead
+        outputs = []
         for i in range(future_steps):
             output_batch, (h, c) = self.network(output_batch, h, c)
+            output_batch = torch.unsqueeze(output_batch, 1) 
+            outputs += output_batch 
+        
+        # reshape the ouput again to match the input's shape
+        outputs = torch.cat(outputs, dim=0)
+        outputs = torch.unsqueeze(outputs, 1)
 
-        # the last values are our predection ahead
-        output_batch = output_batch[:, -future_steps:, :]
-        return output_batch
+        # reduce the amount of features (occur if CNN has multiple channels)
+        x = self.__linear_3(outputs)
+
+        # output from the last layer
+        match self.__output_activation:
+            case "relu":
+                output = torch.relu(x)
+            case "sigmoid":
+                output = torch.sigmoid(x)
+            case "tanh":
+                output = torch.tanh(x)
+            case _:
+                raise ArgumentError(
+                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
+
+        return output
