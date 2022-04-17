@@ -7,11 +7,12 @@ import numpy as np
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, d_type: str = "train", normalize: bool = True, bounds: Tuple[int] = (0, 1),
-                 sequence_length: int = 1, precision: np.dtype = np.float32):
+                future_steps: int= 1, sequence_length: int = 1, precision: np.dtype = np.float32):
         super(Dataset, self).__init__()
 
         self._precision = precision
         self._seq = sequence_length
+        self._f_seq = future_steps
 
         # load the dataset specified
         self._file = f"./data/{d_type}.mat"
@@ -29,19 +30,24 @@ class Dataset(torch.utils.data.Dataset):
         return self._mat.shape[1]
 
     def __getitem__(self, index):
-        # create the sequence we want to consider
-        X = np.zeros((self._seq, 1), dtype=self._precision)
-
-        # create the element ahead (this is what we want to predict based on the sequence X)
-        y = self._mat[index, np.newaxis]
+        # get the label (or label sequence)
+        y = self._mat[index * self._f_seq:(index + 1) * self._f_seq, np.newaxis]
         y = y.astype(self._precision)
 
-        # add a padding of 0s to begin
-        if index < self._seq:
-            X[self._seq - index:, :] = self._mat[:index, :]
+        x_start = index * self._f_seq
+        x_end = x_start - self._seq
+        X = np.zeros((self._seq, 1), dtype=self._precision)
+
+        if x_end == -self._seq:
+            X[self._seq - x_start:] = self._mat[:x_start]
             return X, y
 
-        return self._mat[index - self._seq:index, :], y
+        if x_end < 0:
+            X[self._seq - x_start:] = self._mat[:x_start]
+            return X, y
+
+        X = self._mat[x_end:x_start, :]
+        return X, y
 
     def __len__(self):
-        return len(self._mat)
+        return len(self._mat) / self._f_seq
