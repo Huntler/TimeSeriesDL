@@ -2,10 +2,10 @@ device: cpu
 model_name: ModelLSTM
 model_args:
   log: True
-  lr: 0.01
+  lr: 0.02
   lr_decay: 0.9
   adam_betas: [0.7, 0.9]
-  hidden_dim: 32
+  hidden_dim: 48
   xavier_init: True
   out_act: sigmoid
 dataset_args:
@@ -15,7 +15,7 @@ dataset_args:
   sequence_length: 200
 dataloader_args:
   num_workers: 0
-  batch_size: 1
+  batch_size: 100
   shuffle: True
-train_epochs: 10
+train_epochs: 30
 evaluation: None

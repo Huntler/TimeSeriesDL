@@ -2,22 +2,22 @@ device: cpu
 model_name: ModelGRU
 model_args:
   log: True
-  lr: 0.01
+  lr: 0.02
   lr_decay: 0.9
   adam_betas: [0.7, 0.9]
   n_layers: 2
-  hidden_dim: 12
+  hidden_dim: 16
   dropout: 0.2
   xavier_init: True
-  out_act: sigmoid
+  out_act: tanh
 dataset_args:
   d_type: train
   normalize: True
-  bounds: [0, 1]
+  bounds: [-0.5, 0.5]
   sequence_length: 200
 dataloader_args:
   num_workers: 1
-  batch_size: 1
+  batch_size: 100
   shuffle: True
-train_epochs: 10
+train_epochs: 30
 evaluation: None

@@ -36,10 +36,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--load",
-                "runs/LSTM_Model/17042022_145120/config.yml",
-                "--steps",
-                "5"
+                "--config",
+                "config/default_lstm.yml"
             ]
         }
     ]

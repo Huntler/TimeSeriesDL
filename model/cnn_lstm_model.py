@@ -147,16 +147,16 @@ class CnnLstmModel(BaseModel):
         for input_t in X.split(1, dim=1):
             h, c = self.__lstm_1(input_t[:, 0, :], (h, c))
             
-        x = self.__batch_norm_1(h) if h.size(0) > 1 else h
-        x = torch.relu(x)
+        #x = self.__batch_norm_1(h) if h.size(0) > 1 else h
+        x = torch.relu(h)
 
         # reduce the LSTM's output by using a few dense layers
         x = self.__linear_1(x)
-        x = self.__batch_norm_2(x) if x.size(0) > 1 else x
+        #x = self.__batch_norm_2(x) if x.size(0) > 1 else x
         x = torch.relu(x)
 
         x = self.__linear_2(x)
-        x = self.__batch_norm_3(x) if x.size(0) > 1 else x
+        #x = self.__batch_norm_3(x) if x.size(0) > 1 else x
         output = torch.relu(x)
         
         return output, (h, c)
@@ -166,7 +166,7 @@ class CnnLstmModel(BaseModel):
         x: torch.tensor = torch.transpose(X, 2, 1)
         x = self.__conv_1(x)
         x: torch.tensor = torch.transpose(x, 2, 1)
-        x = self.__batch_norm_0(x)
+        #x = self.__batch_norm_0(x)
         x = self.__cnn_activation(x)
 
         # LSTM preparation

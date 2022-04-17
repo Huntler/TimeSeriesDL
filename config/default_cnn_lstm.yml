@@ -4,11 +4,11 @@ model_args:
   log: True
   lr: 0.02
   lr_decay: 0.9
-  adam_betas: [0.3, 0.5]
-  kernel_size: 21
-  channels: 5
-  stride: 5
-  padding: 10
+  adam_betas: [0.7, 0.9]
+  kernel_size: 51
+  channels: 10
+  stride: 10
+  padding: 25
   hidden_dim: 128
   xavier_init: True
   out_act: sigmoid
