@@ -126,14 +126,13 @@ class LstmModel(BaseModel):
         x = torch.relu(x)
 
         x = self.__linear_2(x)
-        match self.__output_activation:
-            case "relu":
+        if self.__output_activation == "relu":
                 output = torch.relu(x)
-            case "sigmoid":
+        elif self.__output_activation =="sigmoid":
                 output = torch.sigmoid(x)
-            case "tanh":
+        elif self.__output_activation =="tanh":
                 output = torch.tanh(x)
-            case _:
+        else:
                 raise ArgumentError(
                     "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 

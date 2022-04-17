@@ -193,14 +193,13 @@ class CnnLstmModel(BaseModel):
         x = self.__linear_3(outputs)
 
         # output from the last layer
-        match self.__output_activation:
-            case "relu":
+        if self.__output_activation == "relu":
                 output = torch.relu(x)
-            case "sigmoid":
+        elif self.__output_activation == "sigmoid":
                 output = torch.sigmoid(x)
-            case "tanh":
+        elif self.__output_activation =="tanh":
                 output = torch.tanh(x)
-            case _:
+        else:
                 raise ArgumentError(
                     "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 

@@ -103,14 +103,13 @@ class GruModel(BaseModel):
         x = self.__linear_2(x)
 
         # and output the data using one activation function
-        match self.__output_activation:
-            case "relu":
+        if self.__output_activation == "relu":
                 x = torch.relu(x)
-            case "sigmoid":
+        elif self.__output_activation =="sigmoid":
                 x = torch.sigmoid(x)
-            case "tanh":
+        elif self.__output_activation =="tanh":
                 x = torch.tanh(x)
-            case _:
+        else:
                 raise ArgumentError(
                     "Wrong output actiavtion specified (relu | sigmoid | tanh).")
         

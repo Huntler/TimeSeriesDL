@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-def plot_curve(data: List | np.array, data_name: List | np.array = None,
+def plot_curve(data: List or np.array, data_name: List or np.array = None,
                title: str = "Unknown", n_samples: int = -1,
                save_path: str = None) -> None:
     fig, axs = plt.subplots(1)
