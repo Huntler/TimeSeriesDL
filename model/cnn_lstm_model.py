@@ -100,7 +100,7 @@ class CnnLstmModel(BaseModel):
             self.__linear_2.weight = torch.nn.init.zeros_(self.__linear_2.weight)
             self.__linear_3.weight = torch.nn.init.zeros_(self.__linear_3.weight)
 
-        self._loss_fn = torch.nn.L1Loss()
+        self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
