@@ -9,8 +9,8 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 class GruModel(BaseModel):
     def __init__(self, input_size: int, out_act: str = "relu", xavier_init: bool = False, n_layers: int = 2,
-                 hidden_dim: int = 64, dropout: float = 0.1, log: bool = True,
-                 lr: float = 1e-3, lr_decay: float = 9e-1, betas: List[float] = [9e-1, 999e-3],
+                 hidden_dim: int = 64, dropout: float = 0.1, log: bool = True, sequence_length: int = 1,
+                 lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
                  precision: torch.dtype = torch.float16) -> None:
         # if logging enabled, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -40,12 +40,12 @@ class GruModel(BaseModel):
             self.__n_layers,
             batch_first=True,
             dropout=self.__dropout)
-
-        self.__h = None
+        self.__batch_norm_0 = torch.nn.BatchNorm1d(self.__hidden_dim, track_running_stats=False)
 
         # create the dense layers and initilize them based on our hyperparameters
-        self.__linear_1 = torch.nn.Linear(self.__hidden_dim, 32)
-        self.__linear_2 = torch.nn.Linear(32, 1)
+        self.__linear_1 = torch.nn.Linear(self.__hidden_dim, 64)
+        self.__batch_norm_1 = torch.nn.BatchNorm1d(64, track_running_stats=False)
+        self.__linear_2 = torch.nn.Linear(64, 1)
 
         if self.__xavier:
             self.__linear_1.weight = torch.nn.init.xavier_normal_(
@@ -58,21 +58,9 @@ class GruModel(BaseModel):
             self.__linear_2.weight = torch.nn.init.zeros_(
                 self.__linear_2.weight)
 
-        # output from the last layer
-        match self.__output_activation:
-            case "relu":
-                self.__activation = lambda x: torch.relu(x)
-            case "sigmoid":
-                self.__activation = lambda x: torch.sigmoid(x)
-            case "tanh":
-                self.__activation = lambda x: torch.tanh(x)
-            case _:
-                raise ArgumentError(
-                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
-
         # define loss function, optimizer and scheduler for the learning rate
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=betas)
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def __init_hidden_states(self, batch_size: int) -> torch.tensor:
@@ -99,36 +87,43 @@ class GruModel(BaseModel):
         self.load_state_dict(torch.load(path))
         self.eval()
 
-    def forward(self, X):
+    def network(self, X, h):
         batch_size, n_samples, dim = X.shape
-        output = torch.empty(batch_size, 1, 1, dtype=torch.float32)
+        output = torch.empty(batch_size, n_samples, 1, dtype=torch.float32)
+
+        # pass batch of sample at time step t into GRU
+        x, h = self.__gru(X, h.data)
+        x = self.__batch_norm_0(x) if h.size(0) > 1 else x
+        x = torch.relu(x)
+
+        # reduce the GRU's output by using a few dense layers
+        x = self.__linear_1(x)
+        x = self.__batch_norm_1(x) if h.size(0) > 1 else x
+        x = torch.relu(x)
+        x = self.__linear_2(x)
+
+        # and output the data using one activation function
+        match self.__output_activation:
+            case "relu":
+                x = torch.relu(x)
+            case "sigmoid":
+                x = torch.sigmoid(x)
+            case "tanh":
+                x = torch.tanh(x)
+            case _:
+                raise ArgumentError(
+                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
+        
+        return x, h
+
+    def forward(self, X, future_steps: int = 1):
+        batch_size, n_samples, dim = X.shape
 
         # initilize the hidden cell state based on the batch's input size
-        if self.__h is None:
-            self.__h = self.__init_hidden_states(batch_size)
+        h = self.__init_hidden_states(batch_size)
+        output_batch, h = self.network(X, h)
 
-        # run for all samples t of the provided sequence window
-        for t in range(0, n_samples):
-            # pass batch of sample at time step t into GRU
-            input = X[:, t].unsqueeze(1)
-            x, self.__h = self.__gru(input, self.__h.data)
+        for i in range(future_steps):
+            output_batch, h = self.network(output_batch, h)
 
-            # afterwards feed through a dense network
-            x = self.__activation(x)
-            x = self.__linear_1(x)
-            x = self.__activation(x)
-            x = self.__linear_2(x)
-
-            # and output the data using one activation function
-            match self.__output_activation:
-                case "relu":
-                    x = torch.relu(x)
-                case "sigmoid":
-                    x = torch.sigmoid(x)
-                case _:
-                    raise ArgumentError(
-                        "Wrong output actiavtion specified (relu | sigmoid).")
-                # FIXME: maybe tanh?
-
-        output[:, 0, :] = x[:, 0, :]
-        return output
+        return output_batch[:, -future_steps:, :]
