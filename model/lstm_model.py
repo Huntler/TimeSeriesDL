@@ -40,7 +40,6 @@ class LstmModel(BaseModel):
             hidden_size=self.__hidden_dim,
             dtype=self.__precision
         )
-        self.__batch_norm_0 = torch.nn.BatchNorm1d(self.__hidden_dim, track_running_stats=False)
 
         # create the dense layers and initilize them based on our hyperparameters
         self.__linear_1 = torch.nn.Linear(
@@ -48,7 +47,6 @@ class LstmModel(BaseModel):
             64,
             dtype=self.__precision
         )
-        self.__batch_norm_1 = torch.nn.BatchNorm1d(32, track_running_stats=False)
 
         self.__linear_2 = torch.nn.Linear(
             64,
@@ -117,12 +115,10 @@ class LstmModel(BaseModel):
         for input_t in X.split(1, dim=1):
             h, c = self.__lstm_1(input_t[:, 0], (h, c))
 
-        x = self.__batch_norm_0(h) if h.size(0) > 1 else h
         x = torch.relu(h)
 
         # pass the normalized output of the LSTM into the Dense layers
         x = self.__linear_1(x)
-        x = self.__batch_norm_1(x) if x.size(0) > 1 else x
         x = torch.relu(x)
 
         x = self.__linear_2(x)

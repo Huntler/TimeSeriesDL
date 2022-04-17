@@ -73,9 +73,14 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def learn(self, train, validate=None, epochs: int = 1):
+        # set the model into training mode
         self.train()
+
+        # run for n epochs specified
         for e in tqdm(range(epochs)):
             ep_losses = []
+
+            # run for each batch in training set
             for X, y in train:
                 losses = []
 
@@ -88,7 +93,8 @@ class BaseModel(nn.Module):
                     # calculate the gradient using backpropagation of the loss
                     loss = self._loss_fn(pred_y, y)
 
-                    self._optim.zero_grad
+                    # reset the gradient and run backpropagation
+                    self._optim.zero_grad()
                     loss.backward()
                     self._optim.step()
                     # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
@@ -114,6 +120,7 @@ class BaseModel(nn.Module):
 
             # runn a validation of the current model state
             if validate:
+                # set the model to eval mode, run validation and set to train mode again
                 self.eval()
                 accuracy = self.validate(validate, e)
                 self.train()

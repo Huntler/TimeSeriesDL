@@ -40,11 +40,9 @@ class GruModel(BaseModel):
             self.__n_layers,
             batch_first=True,
             dropout=self.__dropout)
-        self.__batch_norm_0 = torch.nn.BatchNorm1d(self.__hidden_dim, track_running_stats=False)
 
         # create the dense layers and initilize them based on our hyperparameters
         self.__linear_1 = torch.nn.Linear(self.__hidden_dim, 64)
-        self.__batch_norm_1 = torch.nn.BatchNorm1d(64, track_running_stats=False)
         self.__linear_2 = torch.nn.Linear(64, 1)
 
         if self.__xavier:
@@ -93,12 +91,10 @@ class GruModel(BaseModel):
 
         # pass batch of sample at time step t into GRU
         x, h = self.__gru(X, h.data)
-        x = self.__batch_norm_0(x) if h.size(0) > 1 else x
         x = torch.relu(x)
 
         # reduce the GRU's output by using a few dense layers
         x = self.__linear_1(x)
-        x = self.__batch_norm_1(x) if h.size(0) > 1 else x
         x = torch.relu(x)
         x = self.__linear_2(x)
 
