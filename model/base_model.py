@@ -9,6 +9,11 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import contextlib
+
+@contextlib.contextmanager
+def no_autocast():
+    yield None
 
 
 class BaseModel(nn.Module):
@@ -74,7 +79,7 @@ class BaseModel(nn.Module):
                 losses = []
 
                 # run for a given amount of epochs
-                with torch.cuda.amp.autocast(enabled=(self._device == "cuda")):
+                with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
                     # perform the presiction and measure the loss between the prediction
                     # and the expected output
                     pred_y = self(X)

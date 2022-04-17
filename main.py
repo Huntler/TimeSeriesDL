@@ -54,6 +54,7 @@ def train():
     config.store_args(f"{model.log_path}/config.yml", config_dict)
 
     # train the model
+    print(f"Starting training of model: {model.log_path}")
     model.learn(train=trainloader, validate=valloader,
                 epochs=config_dict["train_epochs"])
     model.save_to_default()
