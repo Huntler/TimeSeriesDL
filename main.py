@@ -11,6 +11,7 @@ from torchvision import transforms
 from torchvision.transforms import ToTensor, Normalize
 from torch.utils.data import DataLoader
 import argparse
+import copy
 
 from utils.plotter import plot_curve
 
@@ -40,6 +41,12 @@ def train():
     trainloader = DataLoader(trainset, **config_dict["dataloader_args"])
     valloader = DataLoader(valset, **config_dict["dataloader_args"])
 
+    # Load test data
+    test_config_dict = copy.deepcopy(config_dict)
+    test_config_dict["dataset_args"]["d_type"]="test"
+    test_dataset = Dataset(**test_config_dict["dataset_args"])
+    testloader = DataLoader(test_dataset, **test_config_dict["dataloader_args"])
+
     # create model
     model_name = config_dict["model_name"]
     model: BaseModel = config.get_model(model_name)(
@@ -58,7 +65,7 @@ def train():
 
     # train the model
     print(f"Starting training of model: {model.log_path}")
-    model.learn(train=trainloader, validate=valloader,
+    model.learn(train=trainloader, validate=valloader, test=testloader,
                 epochs=config_dict["train_epochs"])
     model.save_to_default()
 

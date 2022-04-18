@@ -16,6 +16,10 @@ def no_autocast():
     yield None
 
 
+def RMSELoss(yhat,y):
+    return torch.sqrt(torch.mean((yhat-y)**2))
+
+
 class BaseModel(nn.Module):
     def __init__(self) -> None:
         super(BaseModel, self).__init__()
@@ -37,6 +41,8 @@ class BaseModel(nn.Module):
         self._scheduler: _LRScheduler = None
         self._optim: Optimizer = None
         self._loss_fn: Module = None
+
+        self.MAELoss = nn.L1Loss()
 
     @property
     def log_path(self) -> str:
@@ -72,17 +78,21 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, train, validate=None, epochs: int = 1):
+    def learn(self, train, validate=None, test=None, epochs: int = 1):
         # set the model into training mode
         self.train()
 
         # run for n epochs specified
         for e in tqdm(range(epochs)):
-            ep_losses = []
+            mse_ep_losses = []
+            rmse_ep_losses = []
+            mae_ep_losses = []
 
             # run for each batch in training set
             for X, y in train:
-                losses = []
+                mse_losses = []
+                rmse_losses = []
+                mae_losses = []
 
                 # run for a given amount of epochs
                 with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
@@ -92,6 +102,10 @@ class BaseModel(nn.Module):
 
                     # calculate the gradient using backpropagation of the loss
                     loss = self._loss_fn(pred_y, y)
+                    
+                    # calculate rmse and mae losses as well
+                    rmse_loss = RMSELoss(pred_y, y)
+                    mae_loss = self.MAELoss(y, pred_y)
 
                     # reset the gradient and run backpropagation
                     self._optim.zero_grad()
@@ -99,14 +113,27 @@ class BaseModel(nn.Module):
                     self._optim.step()
                     # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
 
-                    losses.append(loss.item())
+                    mse_losses.append(loss.item())
+                    rmse_losses.append(rmse_loss.item())
+                    mae_losses.append(mae_loss.item())
 
                 # log for the statistics
-                losses = np.mean(losses, axis=0)
-                ep_losses.append(losses)
+                mse_losses = np.mean(mse_losses, axis=0)
+                mse_ep_losses.append(mse_losses)
                 self._writer.add_scalar(
                     "Train/loss", loss, self.__sample_position)
+
+                rmse_losses = np.mean(rmse_losses, axis=0)
+                rmse_ep_losses.append(rmse_losses)
+                self._writer.add_scalar(
+                    "Train/rmse_loss", rmse_loss, self.__sample_position)
+
+                mae_losses = np.mean(mae_losses, axis=0)
+                mae_ep_losses.append(mae_losses)
+                self._writer.add_scalar(
+                    "Train/mae_loss", mae_loss, self.__sample_position)
                 self.__sample_position += X.size(0)
+
 
             # if there is an adaptive learning rate (scheduler) available
             if self._scheduler:
@@ -115,14 +142,25 @@ class BaseModel(nn.Module):
                 self._writer.add_scalar("Train/learning_rate", lr, e)
 
             # log for the statistics
-            ep_losses = np.mean(ep_losses)
-            self._writer.add_scalar("Train/epoch_loss", ep_losses, e)
+            mse_ep_losses = np.mean(mse_ep_losses)
+            self._writer.add_scalar("Train/epoch_loss", mse_ep_losses, e)
+
+            rmse_ep_losses = np.mean(rmse_ep_losses)
+            self._writer.add_scalar("Train/rmse_epoch_loss", rmse_ep_losses, e)
+
+            mae_ep_losses = np.mean(mae_ep_losses)
+            self._writer.add_scalar("Train/mae_epoch_loss", mae_ep_losses, e)
 
             # runn a validation of the current model state
             if validate:
                 # set the model to eval mode, run validation and set to train mode again
                 self.eval()
                 accuracy = self.validate(validate, e)
+                self.train()
+            
+            if test:
+                self.eval()
+                accuracy = self.test(test, e)
                 self.train()
 
         self.eval()
@@ -140,21 +178,91 @@ class BaseModel(nn.Module):
             float: The model's accuracy.
         """
         accuracies = []
+        mse_losses = []
+        rmse_losses = []
+        mae_losses = []
         # predict all y's of the validation set and append the model's accuracy 
         # to the list
         for X, y in dataloader:
             _y = self.predict(X, as_list=False)
+
             loss = self._loss_fn(_y, y)
+            rmse_loss = RMSELoss(_y, y)
+            mae_loss = self.MAELoss(_y, y)
+
+            mse_losses.append(loss.item())
+            rmse_losses.append(rmse_loss.item())
+            mae_losses.append(mae_loss.item())
+
             accuracies.append(1 - loss.item())
 
         # calculate some statistics based on the data collected
         accuracy = np.mean(np.array(accuracies))
         variance = np.mean(np.var(np.array(accuracies)))
 
+        mse_loss = np.mean(np.array(mse_losses))
+        rmse_loss = np.mean(np.array(rmse_losses))
+        mae_loss = np.mean(np.array(mae_losses))
+
         # log to the tensorboard if wanted
         if log_step != -1:
             self._writer.add_scalar("Val/accuracy_mean", accuracy, log_step)
             self._writer.add_scalar("Val/accuracy_var", variance, log_step)
+
+            self._writer.add_scalar("Val/mse_loss", mse_loss, log_step)
+            self._writer.add_scalar("Val/rmse_loss", rmse_loss, log_step)
+            self._writer.add_scalar("Val/mae_loss", mae_loss, log_step)
+
+        return accuracy
+
+    def test(self, dataloader, log_step: int = -1) -> float:
+        """Method validates model's accuracy based on the given data. In validation, the model
+        only looks one step ahead.
+
+        Args:
+            dataloader (_type_): The dataloader which contains value, not used for training.
+            log_step (int, optional): The step of the logger, can be disabled by setting to -1.
+
+        Returns:
+            float: The model's accuracy.
+        """
+        accuracies = []
+        mse_losses = []
+        rmse_losses = []
+        mae_losses = []
+
+        # predict all y's of the validation set and append the model's accuracy 
+        # to the list
+        for X, y in dataloader:
+            _y = self.predict(X, as_list=False)
+
+            loss = self._loss_fn(_y, y)
+            rmse_loss = RMSELoss(_y, y)
+            mae_loss = self.MAELoss(_y, y)
+
+            mse_losses.append(loss.item())
+            rmse_losses.append(rmse_loss.item())
+            mae_losses.append(mae_loss.item())
+
+            accuracies.append(1 - loss.item())
+
+        # calculate some statistics based on the data collected
+        accuracy = np.mean(np.array(accuracies))
+        variance = np.mean(np.var(np.array(accuracies)))
+
+        mse_loss = np.mean(np.array(mse_losses))
+        rmse_loss = np.mean(np.array(rmse_losses))
+        mae_loss = np.mean(np.array(mae_losses))
+
+
+        # log to the tensorboard if wanted
+        if log_step != -1:
+            self._writer.add_scalar("Test/accuracy_mean", accuracy, log_step)
+            self._writer.add_scalar("Test/accuracy_var", variance, log_step)
+
+            self._writer.add_scalar("Test/mse_loss", mse_loss, log_step)
+            self._writer.add_scalar("Test/rmse_loss", rmse_loss, log_step)
+            self._writer.add_scalar("Test/mae_loss", mae_loss, log_step)
 
         return accuracy
 
