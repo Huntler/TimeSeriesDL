@@ -11,7 +11,7 @@ class GruModel(BaseModel):
     def __init__(self, input_size: int, out_act: str = "relu", xavier_init: bool = False, n_layers: int = 2,
                  hidden_dim: int = 64, dropout: float = 0.1, log: bool = True, sequence_length: int = 1,
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
-                 precision: torch.dtype = torch.float16) -> None:
+                 future_steps: int = 1, precision: torch.dtype = torch.float16) -> None:
         # if logging enabled, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
         if log:
@@ -25,6 +25,7 @@ class GruModel(BaseModel):
         super(GruModel, self).__init__()
 
         # set up hyperparameters
+        self.__future_steps = future_steps
         self.__input_size = input_size
         self.__output_activation = out_act
         self.__xavier = xavier_init
@@ -87,7 +88,6 @@ class GruModel(BaseModel):
 
     def network(self, X, h):
         batch_size, n_samples, dim = X.shape
-        output = torch.empty(batch_size, n_samples, 1, dtype=torch.float32)
 
         # pass batch of sample at time step t into GRU
         x, h = self.__gru(X, h.data)
@@ -118,7 +118,7 @@ class GruModel(BaseModel):
         h = self.__init_hidden_states(batch_size)
         output_batch, h = self.network(X, h)
 
-        for i in range(future_steps):
+        for i in range(self.__future_steps):
             output_batch, h = self.network(output_batch, h)
 
-        return output_batch[:, -future_steps:, :]
+        return output_batch[:, -self.__future_steps:, :]

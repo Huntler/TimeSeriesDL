@@ -17,6 +17,7 @@ dataset_args:
   normalize: True
   bounds: [0, 1]
   sequence_length: 200
+  future_steps: 5
 dataloader_args:
   num_workers: 1
   batch_size: 100

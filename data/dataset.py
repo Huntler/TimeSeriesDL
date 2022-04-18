@@ -1,3 +1,4 @@
+
 from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
 import scipy.io
@@ -7,11 +8,12 @@ import numpy as np
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, d_type: str = "train", normalize: bool = True, bounds: Tuple[int] = (0, 1),
-                 sequence_length: int = 1, precision: np.dtype = np.float32):
+                future_steps: int= 1, sequence_length: int = 1, precision: np.dtype = np.float32):
         super(Dataset, self).__init__()
 
         self._precision = precision
         self._seq = sequence_length
+        self._f_seq = future_steps
 
         # load the dataset specified
         self._file = f"./data/{d_type}.mat"
@@ -26,22 +28,41 @@ class Dataset(torch.utils.data.Dataset):
 
     @property
     def sample_size(self) -> int:
-        return self._mat.shape[1]
-
-    def __getitem__(self, index):
-        # create the sequence we want to consider
-        X = np.zeros((self._seq, 1), dtype=self._precision)
-
-        # create the element ahead (this is what we want to predict based on the sequence X)
-        y = self._mat[index, np.newaxis]
-        y = y.astype(self._precision)
-
-        # add a padding of 0s to begin
-        if index < self._seq:
-            X[self._seq - index:, :] = self._mat[:index, :]
-            return X, y
-
-        return self._mat[index - self._seq:index, :], y
+        return 1
 
     def __len__(self):
-        return len(self._mat)
+        return len(self._mat) - 1
+
+    def __getitem__(self, index):
+        # create sequence place holders
+        X = np.zeros((self._seq, 1), dtype=self._precision)
+        y = np.zeros((self._f_seq, 1), dtype=self._precision)
+
+        if index == 0:
+            return X, y
+        
+        if index > len(self):
+            return None, None
+
+        # calculate indecies for adding to the sequence
+        y_start = index - self._f_seq
+        y_end = index
+        x_start = y_start - self._seq
+        x_end = y_start
+
+        # define the label sequence y
+        # occurs also if x_end < 0
+        if y_start <= 0:
+            y[-self._f_seq - index:] = self._mat[index:self._f_seq + index]
+            return X, y
+
+        y = self._mat[index - self._f_seq:index]
+        y = y.astype(self._precision)
+
+        # define the training data X
+        if x_start < 0:
+            X[self._seq - x_end:] = self._mat[:x_end]
+            return X, y
+
+        X = self._mat[x_start:x_end]
+        return X, y
