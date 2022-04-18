@@ -158,7 +158,7 @@ class BaseModel(nn.Module):
 
         return accuracy
 
-    def predict(self, X, future_steps: int = 1, as_list: bool = True) -> List:
+    def predict(self, X, as_list: bool = True) -> List:
         """This method only predicts future steps based on the given curve described by the datapoints X.
 
         Args:
@@ -169,7 +169,7 @@ class BaseModel(nn.Module):
             List: The prediction.
         """
         with torch.no_grad():
-            out = self(X, future_steps=future_steps)
+            out = self(X)
             if as_list:
                 out = list(out.ravel().numpy())
 

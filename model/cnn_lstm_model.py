@@ -13,7 +13,7 @@ class CnnLstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
                  kernel_size: int = 15, stride: int = 1, padding: int = 0, channels: int = 1,
-                 sequence_length: int = 1,
+                 sequence_length: int = 1, future_steps: int = 1,
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -29,6 +29,7 @@ class CnnLstmModel(BaseModel):
         super(CnnLstmModel, self).__init__()
 
         self.__sequence_length = sequence_length
+        self.__future_steps = future_steps
         self.__input_size = input_size
 
         # CNN hyperparameters
@@ -65,7 +66,6 @@ class CnnLstmModel(BaseModel):
             self.__hidden_dim,
             dtype=self.__precision
         )
-        self.__batch_norm_1 = torch.nn.BatchNorm1d(self.__hidden_dim, track_running_stats=False)
 
         # create the dense layers and initilize them based on our hyperparameters
         self.__linear_1 = torch.nn.Linear(
@@ -73,14 +73,12 @@ class CnnLstmModel(BaseModel):
             64,
             dtype=self.__precision
         )
-        self.__batch_norm_2 = torch.nn.BatchNorm1d(64, track_running_stats=False)
 
         self.__linear_2 = torch.nn.Linear(
             64,
             self.__channels,
             dtype=self.__precision
         )
-        self.__batch_norm_3 = torch.nn.BatchNorm1d(self.__channels, track_running_stats=False)
         
         self.__linear_3 = torch.nn.Linear(
             self.__channels,
@@ -147,21 +145,18 @@ class CnnLstmModel(BaseModel):
         for input_t in X.split(1, dim=1):
             h, c = self.__lstm_1(input_t[:, 0, :], (h, c))
             
-        #x = self.__batch_norm_1(h) if h.size(0) > 1 else h
         x = torch.relu(h)
 
         # reduce the LSTM's output by using a few dense layers
         x = self.__linear_1(x)
-        #x = self.__batch_norm_2(x) if x.size(0) > 1 else x
         x = torch.relu(x)
 
         x = self.__linear_2(x)
-        #x = self.__batch_norm_3(x) if x.size(0) > 1 else x
         output = torch.relu(x)
         
         return output, (h, c)
 
-    def forward(self, X, future_steps: int = 1):
+    def forward(self, X):
         # CNN forward pass
         x: torch.tensor = torch.transpose(X, 2, 1)
         x = self.__conv_1(x)
@@ -179,15 +174,11 @@ class CnnLstmModel(BaseModel):
         output_batch = torch.unsqueeze(output_batch, 1) 
 
         # look several steps ahead
-        outputs = []
-        for i in range(future_steps):
+        outputs = torch.empty(batch_size, self.__future_steps, dim)
+        for i in range(self.__future_steps):
             output_batch, (h, c) = self.network(output_batch, h, c)
+            outputs[:, i, :] = output_batch
             output_batch = torch.unsqueeze(output_batch, 1) 
-            outputs += output_batch 
-        
-        # reshape the ouput again to match the input's shape
-        outputs = torch.cat(outputs, dim=0)
-        outputs = torch.unsqueeze(outputs, 1)
 
         # reduce the amount of features (occur if CNN has multiple channels)
         x = self.__linear_3(outputs)

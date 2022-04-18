@@ -9,12 +9,13 @@ model_args:
   hidden_dim: 16
   dropout: 0.2
   xavier_init: True
-  out_act: tanh
+  out_act: sigmoid
 dataset_args:
   d_type: train
   normalize: True
-  bounds: [-0.5, 0.5]
+  bounds: [0, 1]
   sequence_length: 200
+  future_steps: 5
 dataloader_args:
   num_workers: 1
   batch_size: 100

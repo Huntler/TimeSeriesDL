@@ -1,3 +1,4 @@
+
 from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
 import scipy.io
@@ -27,27 +28,41 @@ class Dataset(torch.utils.data.Dataset):
 
     @property
     def sample_size(self) -> int:
-        return self._mat.shape[1]
-
-    def __getitem__(self, index):
-        # get the label (or label sequence)
-        y = self._mat[index * self._f_seq:(index + 1) * self._f_seq, np.newaxis]
-        y = y.astype(self._precision)
-
-        x_start = index * self._f_seq
-        x_end = x_start - self._seq
-        X = np.zeros((self._seq, 1), dtype=self._precision)
-
-        if x_end == -self._seq:
-            X[self._seq - x_start:] = self._mat[:x_start]
-            return X, y
-
-        if x_end < 0:
-            X[self._seq - x_start:] = self._mat[:x_start]
-            return X, y
-
-        X = self._mat[x_end:x_start, :]
-        return X, y
+        return 1
 
     def __len__(self):
-        return len(self._mat) / self._f_seq
+        return len(self._mat) - 1
+
+    def __getitem__(self, index):
+        # create sequence place holders
+        X = np.zeros((self._seq, 1), dtype=self._precision)
+        y = np.zeros((self._f_seq, 1), dtype=self._precision)
+
+        if index == 0:
+            return X, y
+        
+        if index > len(self):
+            return None, None
+
+        # calculate indecies for adding to the sequence
+        y_start = index - self._f_seq
+        y_end = index
+        x_start = y_start - self._seq
+        x_end = y_start
+
+        # define the label sequence y
+        # occurs also if x_end < 0
+        if y_start <= 0:
+            y[-self._f_seq - index:] = self._mat[index:self._f_seq + index]
+            return X, y
+
+        y = self._mat[index - self._f_seq:index]
+        y = y.astype(self._precision)
+
+        # define the training data X
+        if x_start < 0:
+            X[self._seq - x_end:] = self._mat[:x_end]
+            return X, y
+
+        X = self._mat[x_start:x_end]
+        return X, y

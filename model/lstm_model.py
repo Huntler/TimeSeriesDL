@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 class LstmModel(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
-                 sequence_length: int = 1,
+                 sequence_length: int = 1, future_steps: int = 1,
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -28,6 +28,7 @@ class LstmModel(BaseModel):
 
         self.__input_size = input_size
         self.__sequence_length = sequence_length
+        self.__future_steps = future_steps
         self.__xavier = xavier_init
         self.__output_activation = out_act
         self.__n_layers = 0
@@ -135,7 +136,7 @@ class LstmModel(BaseModel):
 
         return output, (h, c)
 
-    def forward(self, X, future_steps: int = 1):
+    def forward(self, X):
         # based on the official PyTorch documentation: 
         # https://github.com/pytorch/examples/blob/main/time_sequence_prediction/train.py
         batch_size, n_samples, dim = X.shape
@@ -148,13 +149,10 @@ class LstmModel(BaseModel):
         output_batch = torch.unsqueeze(output_batch, -1) 
 
         # look several steps ahead
-        outputs = []
-        for i in range(future_steps):
+        outputs = torch.empty(batch_size, self.__future_steps, dim)
+        for i in range(self.__future_steps):
             output_batch, (h, c) = self.network(output_batch, h, c)
+            outputs[:, i, :] = output_batch
             output_batch = torch.unsqueeze(output_batch, -1) 
-            outputs += output_batch 
 
-        # reshape the ouput again to match the input's shape
-        outputs = torch.cat(outputs, dim=0)
-        outputs = torch.unsqueeze(outputs, -1)
         return outputs

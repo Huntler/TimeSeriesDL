@@ -1,3 +1,4 @@
+import math
 from multiprocessing import freeze_support
 import os
 import numpy as np
@@ -16,7 +17,6 @@ from utils.plotter import plot_curve
 
 # TODO: add dropout to LSTM
 # TODO: add multiple LSTM layers (currently only on available)
-# FIXME: fix GRU model in case n_samples % batch_size != 0
 
 
 future_steps = 1
@@ -30,9 +30,12 @@ def train():
 
     freeze_support()
 
+    future_steps = config_dict["dataset_args"]["future_steps"]
+
     # load the data, normalize them and convert them to tensor
     dataset = Dataset(**config_dict["dataset_args"])
-    split_sizes = [int(len(dataset) * 0.8), int(len(dataset) * 0.2)]
+    split_sizes = [int(math.ceil(len(dataset) * 0.8)), int(math.floor(len(dataset) * 0.2))]
+    
     trainset, valset = torch.utils.data.random_split(dataset, split_sizes)
     trainloader = DataLoader(trainset, **config_dict["dataloader_args"])
     valloader = DataLoader(valset, **config_dict["dataloader_args"])
@@ -41,7 +44,7 @@ def train():
     model_name = config_dict["model_name"]
     model: BaseModel = config.get_model(model_name)(
         input_size=dataset.sample_size, sequence_length=config_dict["dataset_args"]["sequence_length"], 
-        **config_dict["model_args"])
+        future_steps=future_steps, **config_dict["model_args"])
 
     # create the model and train it, if epochs > 0
     epochs = config_dict["train_epochs"]
@@ -64,6 +67,8 @@ def load():
     device = config_dict["device"]
     precision = torch.float16 if config_dict["device"] == "cuda" else torch.float32
 
+    future_steps = config_dict["dataset_args"]["future_steps"]
+
     # load the data, normalize them and convert them to tensor
     dataset = Dataset(**config_dict["dataset_args"])
     dataloader = DataLoader(dataset)
@@ -84,7 +89,7 @@ def load():
     model_class = config.get_model(name=config_dict["model_name"])
     model: BaseModel = model_class(
         input_size=dataset.sample_size, sequence_length=config_dict["dataset_args"]["sequence_length"], 
-        precision=precision, **_config_dict["model_args"])
+        future_steps=future_steps, precision=precision, **_config_dict["model_args"])
     model.load(path)
 
     # do the prediction
@@ -92,10 +97,8 @@ def load():
     pred_data = []
     index = 0
     for X, y in tqdm(dataloader):
-        if len(pred_data) <= index:
-            _y = model.predict(X, future_steps=future_steps)
-            pred_data += _y
-        actual_data += [y.ravel().numpy()[0]]
+        pred_data += model.predict(X)
+        actual_data += list(y.ravel().numpy())
         index += 1
 
     pred_data = np.array([[i, d] for i, d in enumerate(pred_data)])
@@ -110,7 +113,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--config", dest="config", help="")
     parser.add_argument("--load", dest="load", help="")
-    parser.add_argument("--steps", dest="steps", type=int, default=1, help="")
     args = parser.parse_args()
 
     if args.config:
@@ -121,5 +123,4 @@ if __name__ == "__main__":
 
     if args.load:
         config_dict = config.get_args(args.load)
-        future_steps = args.steps
         load()
