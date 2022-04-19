@@ -99,15 +99,32 @@ def load():
         future_steps=future_steps, precision=precision, **_config_dict["model_args"])
     model.load(path)
 
-    # do the prediction
+    # do the prediction in a recursive fashion 
     actual_data = []
     pred_data = []
     index = 0
     for X, y in tqdm(dataloader):
-        if index % future_steps == 0:
-            pred_data += model.predict(X)
-            actual_data += list(y.ravel().numpy())
+        seq_len = X.size(1)
+        if index == 0:
+            print("NO")
+            pass
+        elif index < seq_len:
+            sub_seq = torch.tensor(pred_data)
+            sub_seq = torch.unsqueeze(sub_seq, 0)
+            sub_seq = torch.unsqueeze(sub_seq, -1)
+            X[:, :len(pred_data)] = sub_seq
+        else:
+            sub_seq = torch.tensor(pred_data[-seq_len:])
+            sub_seq = torch.unsqueeze(sub_seq, 0)
+            sub_seq = torch.unsqueeze(sub_seq, -1)
+            X = sub_seq
+
+        pred_data += model.predict(X)
+        actual_data += list(y.ravel().numpy())
         index += 1
+
+        if index == config_dict["dataset_args"]["future_steps"]:
+            index = 0
 
     pred_data = np.array([[i, d] for i, d in enumerate(pred_data)])
     actual_data = np.array([[i, d] for i, d in enumerate(actual_data)])
