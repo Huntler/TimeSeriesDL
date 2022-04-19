@@ -188,10 +188,12 @@ class CnnLstmModel(BaseModel):
                 output = torch.relu(x)
         elif self.__output_activation == "sigmoid":
                 output = torch.sigmoid(x)
-        elif self.__output_activation =="tanh":
+        elif self.__output_activation == "tanh":
                 output = torch.tanh(x)
+        elif self.__output_activation == "linear":
+            output = x
         else:
-                raise ArgumentError(
-                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
+            raise ArgumentError(
+                "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 
         return output

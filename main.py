@@ -1,6 +1,7 @@
 import math
 from multiprocessing import freeze_support
 import os
+import random
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -14,6 +15,9 @@ import argparse
 import copy
 
 from utils.plotter import plot_curve
+torch.manual_seed(42)
+random.seed(42)
+np.random.seed(42)
 
 
 # TODO: add dropout to LSTM
@@ -75,6 +79,7 @@ def load():
     precision = torch.float16 if config_dict["device"] == "cuda" else torch.float32
 
     future_steps = config_dict["dataset_args"]["future_steps"]
+    config_dict["dataset_args"]["future_steps"] = 1
 
     # load the data, normalize them and convert them to tensor
     dataset = Dataset(**config_dict["dataset_args"])
@@ -96,7 +101,7 @@ def load():
     model_class = config.get_model(name=config_dict["model_name"])
     model: BaseModel = model_class(
         input_size=dataset.sample_size, sequence_length=config_dict["dataset_args"]["sequence_length"], 
-        future_steps=future_steps, precision=precision, **_config_dict["model_args"])
+        future_steps=1, precision=precision, **_config_dict["model_args"])
     model.load(path)
 
     # do the prediction in a recursive fashion 
@@ -106,13 +111,12 @@ def load():
     for X, y in tqdm(dataloader):
         seq_len = X.size(1)
         if index == 0:
-            print("NO")
             pass
         elif index < seq_len:
             sub_seq = torch.tensor(pred_data)
             sub_seq = torch.unsqueeze(sub_seq, 0)
             sub_seq = torch.unsqueeze(sub_seq, -1)
-            X[:, :len(pred_data)] = sub_seq
+            X[:, :index] = sub_seq
         else:
             sub_seq = torch.tensor(pred_data[-seq_len:])
             sub_seq = torch.unsqueeze(sub_seq, 0)
@@ -123,13 +127,14 @@ def load():
         actual_data += list(y.ravel().numpy())
         index += 1
 
-        if index == config_dict["dataset_args"]["future_steps"]:
+        if index == future_steps:
             index = 0
 
     pred_data = np.array([[i, d] for i, d in enumerate(pred_data)])
     actual_data = np.array([[i, d] for i, d in enumerate(actual_data)])
+    d_type = config_dict["dataset_args"]["d_type"]
     plot_curve(data=[actual_data, pred_data], data_name=["actual", "prediction"],
-               title=f"Look ahead: {future_steps}", save_path=f"{root_folder}/look_ahead_{future_steps}.png")
+               title=f"Look ahead: {future_steps}", save_path=f"{root_folder}/look_ahead_{future_steps}_{d_type}.png")
 
 
 if __name__ == "__main__":
@@ -144,6 +149,8 @@ if __name__ == "__main__":
         config_dict = config.get_args(args.config)
         future_steps = 1
         train()
+        config_dict["dataset_args"]["d_type"] = "test"
+        config_dict["dataset_args"]["future_steps"] = 200
         load()
 
     if args.load:

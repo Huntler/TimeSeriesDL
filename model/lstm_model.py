@@ -116,7 +116,8 @@ class LstmModel(BaseModel):
         for input_t in X.split(1, dim=1):
             h, c = self.__lstm_1(input_t[:, 0], (h, c))
 
-        x = torch.relu(h)
+        x = h
+        # x = torch.relu(h)
 
         # pass the normalized output of the LSTM into the Dense layers
         x = self.__linear_1(x)
@@ -125,13 +126,15 @@ class LstmModel(BaseModel):
         x = self.__linear_2(x)
         if self.__output_activation == "relu":
                 output = torch.relu(x)
-        elif self.__output_activation =="sigmoid":
+        elif self.__output_activation == "sigmoid":
                 output = torch.sigmoid(x)
-        elif self.__output_activation =="tanh":
+        elif self.__output_activation == "tanh":
                 output = torch.tanh(x)
+        elif self.__output_activation == "linear":
+            output = x
         else:
-                raise ArgumentError(
-                    "Wrong output actiavtion specified (relu | sigmoid | tanh).")
+            raise ArgumentError(
+                "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 
         return output, (h, c)
 
