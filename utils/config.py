@@ -5,6 +5,7 @@ from model.base_model import BaseModel
 from model.cnn_lstm_model import CnnLstmModel
 from model.gru_model import GruModel
 from model.lstm_model import LstmModel
+from model.lstm_model_v2 import LstmModelv2
 
 
 class Config:
@@ -61,4 +62,5 @@ class Config:
 config = Config()
 config.register_model("ModelGRU", GruModel)
 config.register_model("ModelLSTM", LstmModel)
+config.register_model("ModelLSTMv2", LstmModelv2)
 config.register_model("ModelCNN-LSTM", CnnLstmModel)

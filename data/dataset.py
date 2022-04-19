@@ -31,12 +31,14 @@ class Dataset(torch.utils.data.Dataset):
         return 1
 
     def __len__(self):
-        return len(self._mat) - 1
+        return max(1, len(self._mat) - self._f_seq - self._seq)
 
     def __getitem__(self, index):
-        # create sequence place holders
-        X = np.zeros((self._seq, 1), dtype=self._precision)
-        y = np.zeros((self._f_seq, 1), dtype=self._precision)
+        #X = np.zeros((self._seq, 1), dtype=self._precision)
+        #y = np.zeros((self._f_seq, 1), dtype=self._precision)
+        X = self._mat[index:self._seq + index]
+        y = self._mat[self._seq + index:self._seq + index + self._f_seq]
+        return X, y
 
         if index == 0:
             return X, y

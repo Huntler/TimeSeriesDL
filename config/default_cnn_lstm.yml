@@ -3,12 +3,12 @@ model_name: ModelCNN-LSTM
 model_args:
   log: True
   lr: 0.02
-  lr_decay: 0.9
+  lr_decay: 0.99
   adam_betas: [0.7, 0.9]
-  kernel_size: 51
-  channels: 10
-  stride: 10
-  padding: 25
+  kernel_size: 9
+  channels: 2
+  stride: 2
+  padding: 4
   hidden_dim: 128
   xavier_init: True
   out_act: sigmoid
@@ -16,11 +16,11 @@ dataset_args:
   d_type: train
   normalize: True
   bounds: [0, 1]
-  sequence_length: 200
+  sequence_length: 50
   future_steps: 1
 dataloader_args:
   num_workers: 1
   batch_size: 100
   shuffle: True
-train_epochs: 30
+train_epochs: 50
 evaluation: None

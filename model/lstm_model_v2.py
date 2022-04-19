@@ -8,7 +8,7 @@ from .base_model import BaseModel
 from torch.optim.lr_scheduler import ExponentialLR
 
 
-class LstmModel(BaseModel):
+class LstmModelv2(BaseModel):
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False, out_act: str = "relu",
                  lr: float = 1e-3, lr_decay: float = 9e-1, adam_betas: List[float] = [9e-1, 999e-3],
                  sequence_length: int = 1, future_steps: int = 1,
@@ -24,7 +24,7 @@ class LstmModel(BaseModel):
             self._writer = False
 
         # initialize components using the parent class
-        super(LstmModel, self).__init__()
+        super(LstmModelv2, self).__init__()
 
         self.__input_size = input_size
         self.__sequence_length = sequence_length
@@ -38,6 +38,12 @@ class LstmModel(BaseModel):
         # lstm1, linear are all layers in the network
         self.__lstm_1 = torch.nn.LSTMCell(
             self.__input_size,
+            hidden_size=self.__hidden_dim,
+            dtype=self.__precision
+        )
+        # lstm2, linear are all layers in the network
+        self.__lstm_2 = torch.nn.LSTMCell(
+            self.__hidden_dim,
             hidden_size=self.__hidden_dim,
             dtype=self.__precision
         )
@@ -67,7 +73,7 @@ class LstmModel(BaseModel):
                 self.__linear_2.weight)
 
         # define loss function, optimizer and scheduler for the learning rate
-        self._loss_fn = torch.nn.L1Loss()
+        self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
@@ -98,7 +104,7 @@ class LstmModel(BaseModel):
         self.load_state_dict(torch.load(path))
         self.eval()
 
-    def network(self, X, h, c):
+    def network(self, X, cs):
         """This method contains the model's network architecture.
 
         Args:
@@ -112,11 +118,14 @@ class LstmModel(BaseModel):
         Returns:
             _type_: The output of all hidden states and the current hidden and cell states.
         """
+        h, c, h2, c2 = cs
+
         # iterate over each time step and predict the output using the LSTM
         for input_t in X.split(1, dim=1):
             h, c = self.__lstm_1(input_t[:, 0], (h, c))
+            h2, c2 = self.__lstm_2(h, (h2, c2))
 
-        x = torch.relu(h)
+        x = torch.relu(h2)
 
         # pass the normalized output of the LSTM into the Dense layers
         x = self.__linear_1(x)
@@ -133,7 +142,7 @@ class LstmModel(BaseModel):
                 raise ArgumentError(
                     "Wrong output actiavtion specified (relu | sigmoid | tanh).")
 
-        return output, (h, c)
+        return output, (h, c, h2, c2)
 
     def forward(self, X):
         # based on the official PyTorch documentation: 
@@ -142,15 +151,17 @@ class LstmModel(BaseModel):
 
         # reset the hidden states for each sequence we train
         h, c = self.__init_hidden_states(batch_size)
+        h2, c2 = self.__init_hidden_states(batch_size)
+        cs = h, c, h2, c2
 
         # fit the hidden states to the given batch X
-        output_batch, (h, c) = self.network(X, h, c)
+        output_batch, cs = self.network(X, cs)
         output_batch = torch.unsqueeze(output_batch, -1) 
 
         # look several steps ahead
         outputs = torch.empty(batch_size, self.__future_steps, dim)
         for i in range(self.__future_steps):
-            output_batch, (h, c) = self.network(output_batch, h, c)
+            output_batch, cs = self.network(output_batch, cs)
             outputs[:, i, :] = output_batch
             output_batch = torch.unsqueeze(output_batch, -1) 
 
