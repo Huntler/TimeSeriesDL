@@ -21,14 +21,19 @@ class Dataset(torch.utils.data.Dataset):
         self._mat = self._mat.astype(self._precision)
 
         # normalize the dataset between values of o to 1
+        self._scaler = None
         if normalize:
-            _scaler = MinMaxScaler(feature_range=bounds)
-            _scaler.fit(self._mat)
-            self._mat = _scaler.transform(self._mat)
+            self._scaler = MinMaxScaler(feature_range=bounds)
+            self._scaler.fit(self._mat)
+            self._mat = self. _scaler.transform(self._mat)
 
     @property
     def sample_size(self) -> int:
         return 1
+    
+    def scale_back(self, data):
+        data = np.array(data, dtype=self._precision)
+        return self._scaler.inverse_transform(data)
 
     def __len__(self):
         return max(1, len(self._mat) - self._f_seq - self._seq)

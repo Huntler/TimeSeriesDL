@@ -130,8 +130,8 @@ def load():
         if index == future_steps:
             index = 0
 
-    pred_data = np.array([[i, d] for i, d in enumerate(pred_data)])
-    actual_data = np.array([[i, d] for i, d in enumerate(actual_data)])
+    pred_data = np.array([[i, dataset.scale_back([[d]])] for i, d in enumerate(pred_data)])
+    actual_data = np.array([[i, dataset.scale_back([[d]])] for i, d in enumerate(actual_data)])
     d_type = config_dict["dataset_args"]["d_type"]
     plot_curve(data=[actual_data, pred_data], data_name=["actual", "prediction"],
                title=f"Look ahead: {future_steps}", save_path=f"{root_folder}/look_ahead_{future_steps}_{d_type}.png")

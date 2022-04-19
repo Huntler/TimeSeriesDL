@@ -12,11 +12,11 @@ dataset_args:
   d_type: train
   normalize: True
   bounds: [0, 1]
-  sequence_length: 10
+  sequence_length: 100
   future_steps: 1
 dataloader_args:
   num_workers: 0
-  batch_size: 20
+  batch_size: 100
   shuffle: True
 train_epochs: 500
 evaluation: None

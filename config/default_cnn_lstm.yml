@@ -4,19 +4,19 @@ model_args:
   log: True
   lr: 0.02
   lr_decay: 0.99
-  adam_betas: [0.7, 0.9]
-  kernel_size: 5
+  adam_betas: [0.9, 0.999]
+  kernel_size: 31
   channels: 1
   stride: 1
-  padding: 2
+  padding: 15
   hidden_dim: 128
-  xavier_init: True
-  out_act: sigmoid
+  xavier_init: False
+  out_act: linear
 dataset_args:
   d_type: train
   normalize: True
   bounds: [0, 1]
-  sequence_length: 10
+  sequence_length: 100
   future_steps: 1
 dataloader_args:
   num_workers: 1
