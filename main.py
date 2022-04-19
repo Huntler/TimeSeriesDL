@@ -104,8 +104,9 @@ def load():
     pred_data = []
     index = 0
     for X, y in tqdm(dataloader):
-        pred_data += model.predict(X)
-        actual_data += list(y.ravel().numpy())
+        if index % future_steps == 0:
+            pred_data += model.predict(X)
+            actual_data += list(y.ravel().numpy())
         index += 1
 
     pred_data = np.array([[i, d] for i, d in enumerate(pred_data)])
