@@ -13,6 +13,7 @@ from torchvision.transforms import ToTensor, Normalize
 from torch.utils.data import DataLoader
 import argparse
 import copy
+import optuna
 
 from utils.plotter import plot_curve
 torch.manual_seed(42)
@@ -73,6 +74,7 @@ def train():
                 epochs=config_dict["train_epochs"])
     model.save_to_default()
 
+    return model
 
 def load():
     device = config_dict["device"]
@@ -108,6 +110,7 @@ def load():
     actual_data = []
     pred_data = []
     index = 0
+    losses = []
     for X, y in tqdm(dataloader):
         seq_len = X.size(1)
         if index == 0:
@@ -123,12 +126,22 @@ def load():
             sub_seq = torch.unsqueeze(sub_seq, -1)
             X = sub_seq
 
-        pred_data += model.predict(X)
-        actual_data += list(y.ravel().numpy())
+        predicted = model.predict(X)
+        actual = list(y.ravel().numpy())
+
+        pred_data += predicted
+        actual_data += actual
+
+        loss = abs(predicted[0] - actual[0])
+        losses.append(loss)
+
         index += 1
 
         if index == future_steps:
             index = 0
+
+    mae_mean = np.mean(losses)
+    print("MAE Loss mean for test data: " + str(mae_mean))
 
     pred_data = np.array([[i, dataset.scale_back([[d]])] for i, d in enumerate(pred_data)])
     actual_data = np.array([[i, dataset.scale_back([[d]])] for i, d in enumerate(actual_data)])
@@ -137,13 +150,41 @@ def load():
                title=f"Look ahead: {future_steps}", save_path=f"{root_folder}/look_ahead_{future_steps}_{d_type}.png")
 
 
+l = list(range(1, 200))
+new_l = [item for item in l if item % 5 == 0]
+trial_seq_lens = []
+
+def objective(trial):
+    x = new_l[trial.number]
+
+    config_dict["dataset_args"]["sequence_length"] = x
+    trial_seq_lens.append(x)
+    print("Training model with sequence length: " + str(x))
+    model = train()
+
+    (acc, var, mse, rmse, mae) = model.test_stats
+    return acc
+
+def fine_tune_seq_len():
+    study = optuna.create_study(direction=optuna.study.StudyDirection.MAXIMIZE)
+    study.optimize(objective, n_trials=40)
+
+    best_seq_len = trial_seq_lens[study.best_trial.number]
+    print("Best performing seqence length is " + str(best_seq_len))
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=""
     )
     parser.add_argument("--config", dest="config", help="")
     parser.add_argument("--load", dest="load", help="")
+    parser.add_argument("--fine_tune", dest="fine_tune", help="")
+
     args = parser.parse_args()
+
+    if args.fine_tune:
+        config_dict = config.get_args(args.fine_tune)
+        fine_tune_seq_len()
 
     if args.config:
         config_dict = config.get_args(args.config)

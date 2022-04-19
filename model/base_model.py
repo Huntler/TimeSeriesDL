@@ -43,6 +43,7 @@ class BaseModel(nn.Module):
         self._loss_fn: Module = None
 
         self.MAELoss = nn.L1Loss()
+        self.test_stats = None
 
     @property
     def log_path(self) -> str:
@@ -254,6 +255,9 @@ class BaseModel(nn.Module):
         rmse_loss = np.mean(np.array(rmse_losses))
         mae_loss = np.mean(np.array(mae_losses))
 
+        self.test_stats = (
+            accuracy, variance, mse_loss, rmse_loss, mae_loss
+        )
 
         # log to the tensorboard if wanted
         if log_step != -1:
