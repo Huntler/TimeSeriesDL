@@ -38,6 +38,7 @@ dataset_args:
   normalize: True
   bounds: [0, 1]
   sequence_length: 200
+  future_steps: 1
 dataloader_args:
   num_workers: 1
   batch_size: 4
@@ -52,12 +53,10 @@ evaluation: None
 - [x] LSTM
 - [x] Use convolutional layers before passing values into the LSTM
 - [ ] GRU
-- [x] Batch normalization (LSTM & CNN + LSTM)
 - [x] Xavier weight initialization
 - [x] ReLU, Sigmoid & Tanh
 - [ ] Dropout
 - [x] Variable learning rate (using decay)
-- [ ] Try other optimizers, like Ada, RMSprop or Nag (using config system)
 - [x] Tensorboard logging, model saving & more
 - [x] Dataset normalization & transformation
 - [x] Dataset random shuffle
