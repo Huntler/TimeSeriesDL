@@ -112,7 +112,7 @@ def load():
         seq_len = X.size(1)
         if index == 0:
             pass
-        elif index < seq_len:
+        elif index < seq_len and len(pred_data) < future_steps:
             sub_seq = torch.tensor(pred_data)
             sub_seq = torch.unsqueeze(sub_seq, 0)
             sub_seq = torch.unsqueeze(sub_seq, -1)
