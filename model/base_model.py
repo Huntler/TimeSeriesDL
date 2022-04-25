@@ -83,15 +83,15 @@ class BaseModel(nn.Module):
         # set the model into training mode
         self.train()
 
-        train = tqdm(train) if verbose else train
         # run for n epochs specified
         for e in tqdm(range(epochs)):
+            train_iterator = tqdm(train) if verbose else train
             mse_ep_losses = []
             rmse_ep_losses = []
             mae_ep_losses = []
 
             # run for each batch in training set
-            for X, y in train:
+            for X, y in train_iterator:
                 mse_losses = []
                 rmse_losses = []
                 mae_losses = []
