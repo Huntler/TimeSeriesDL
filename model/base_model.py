@@ -79,10 +79,11 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, train, validate=None, test=None, epochs: int = 1):
+    def learn(self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False):
         # set the model into training mode
         self.train()
 
+        train = tqdm(train) if verbose else train
         # run for n epochs specified
         for e in tqdm(range(epochs)):
             mse_ep_losses = []
