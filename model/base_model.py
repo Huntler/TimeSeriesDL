@@ -9,12 +9,6 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-import contextlib
-
-@contextlib.contextmanager
-def no_autocast():
-    yield None
-
 
 def RMSELoss(yhat,y):
     return torch.sqrt(torch.mean((yhat-y)**2))
@@ -79,44 +73,46 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, train, validate=None, test=None, epochs: int = 1):
+    def learn(self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False):
         # set the model into training mode
         self.train()
 
         # run for n epochs specified
         for e in tqdm(range(epochs)):
+            train_iterator = tqdm(train) if verbose else train
             mse_ep_losses = []
             rmse_ep_losses = []
             mae_ep_losses = []
 
             # run for each batch in training set
-            for X, y in train:
+            for X, y in train_iterator:
                 mse_losses = []
                 rmse_losses = []
                 mae_losses = []
 
-                # run for a given amount of epochs
-                with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
-                    # perform the presiction and measure the loss between the prediction
-                    # and the expected output
-                    pred_y = self(X)
+                X = X.to(self._device)
+                y = y.to(self._device)
 
-                    # calculate the gradient using backpropagation of the loss
-                    loss = self._loss_fn(pred_y, y)
-                    
-                    # calculate rmse and mae losses as well
-                    rmse_loss = RMSELoss(pred_y, y)
-                    mae_loss = self.MAELoss(y, pred_y)
+                # perform the presiction and measure the loss between the prediction
+                # and the expected output
+                pred_y = self(X)
 
-                    # reset the gradient and run backpropagation
-                    self._optim.zero_grad()
-                    loss.backward()
-                    self._optim.step()
-                    # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
+                # calculate the gradient using backpropagation of the loss
+                loss = self._loss_fn(pred_y, y)
+                
+                # calculate rmse and mae losses as well
+                rmse_loss = RMSELoss(pred_y, y)
+                mae_loss = self.MAELoss(y, pred_y)
 
-                    mse_losses.append(loss.item())
-                    rmse_losses.append(rmse_loss.item())
-                    mae_losses.append(mae_loss.item())
+                # reset the gradient and run backpropagation
+                self._optim.zero_grad()
+                loss.backward()
+                self._optim.step()
+                # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
+
+                mse_losses.append(loss.item())
+                rmse_losses.append(rmse_loss.item())
+                mae_losses.append(mae_loss.item())
 
                 # log for the statistics
                 mse_losses = np.mean(mse_losses, axis=0)
@@ -187,6 +183,7 @@ class BaseModel(nn.Module):
         for X, y in dataloader:
             _y = self.predict(X, as_list=False)
 
+            y = y.to(self._device)
             loss = self._loss_fn(_y, y)
             rmse_loss = RMSELoss(_y, y)
             mae_loss = self.MAELoss(_y, y)
@@ -237,6 +234,7 @@ class BaseModel(nn.Module):
         for X, y in dataloader:
             _y = self.predict(X, as_list=False)
 
+            y = y.to(self._device)
             loss = self._loss_fn(_y, y)
             rmse_loss = RMSELoss(_y, y)
             mae_loss = self.MAELoss(_y, y)
@@ -280,9 +278,10 @@ class BaseModel(nn.Module):
         Returns:
             List: The prediction.
         """
+        X = X.to(self._device)
         with torch.no_grad():
             out = self(X)
             if as_list:
-                out = list(out.ravel().numpy())
+                out = list(out.ravel().cpu().numpy())
 
         return out
