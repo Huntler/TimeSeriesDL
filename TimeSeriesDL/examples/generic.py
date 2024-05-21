@@ -1,22 +1,24 @@
 """Example usage of the any model."""
+from torch.utils.data import DataLoader
 from TimeSeriesDL.model import BaseModel
 from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.utils import config
 
 # load training arguments (equals example/simple_model.py)
-train_args = config.get_args("./TimeSeriesDL/examples/generic_example.yaml")
+train_args = config.get_args("./generic_example.yaml")
 
-# create a dataset loader which loads a matplotlib matrix from ./data/train.mat
-data = Dataset(train_args["dataset"])
+# create a dataset loader which loads a matplotlib matrix from ./train.mat
+data = Dataset(**train_args["dataset"])
+dataloader = DataLoader(data, **train_args["dataloader"])
 
 # create a model based on what is defined in the config
 # to do so, a model needs to be registered using config.register_model()
 model_name = train_args["model_name"]
-simple_model: BaseModel = config.get_model(model_name)(train_args["model"])
+simple_model: BaseModel = config.get_model(model_name)(**train_args["model"])
 
 # train the model on the dataset for 5 epochs and log the progress in a CLI
 # to review the model's training performance, open TensorBoard in a browser
-simple_model.learn(train=data, epochs=train_args["train_epochs"], verbose=True)
+simple_model.learn(train=dataloader, epochs=train_args["train_epochs"], verbose=True)
 
 # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
 simple_model.save_to_default()

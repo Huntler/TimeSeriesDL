@@ -22,7 +22,7 @@ class SimpleModel(BaseModel):
                  out_act: str = "relu", lr: float = 1e-3, lr_decay: float = 9e-1,
                  adam_betas: Tuple[float, float] = (9e-1, 999e-3), kernel_size: int = 15,
                  stride: int = 1, padding: int = 0, channels: int = 1,
-                 sequence_length: int = 1, future_steps: int = 1, log: bool = True,
+                 future_steps: int = 1, log: bool = True,
                  precision: torch.dtype = torch.float32) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -38,7 +38,6 @@ class SimpleModel(BaseModel):
         super(SimpleModel, self).__init__(self._writer)
 
         # define sequence parameters
-        self._sequence_length = sequence_length
         self._future_steps = future_steps
         self._input_size = input_size
 
@@ -172,7 +171,7 @@ class SimpleModel(BaseModel):
 
         return output_batch, (h, c)
 
-    def forward(self, x, future_steps: int = 1):
+    def forward(self, x: torch.tensor, future_steps: int = 1):
         # conv1d forward pass
         x: torch.tensor = torch.transpose(x, 2, 1)
         x = self._conv_1(x)
