@@ -1,13 +1,9 @@
 """Example usage of the SimpleModel."""
 from TimeSeriesDL.model import SimpleModel
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.utils import config
-
-# load training arguments
-train_args = config.get_args("simple_model_example.yaml")
 
 # create a dataset loader which loads a matplotlib matrix from ./data/train.mat
-data = Dataset(**train_args)
+data = Dataset(d_type="train")
 
 # create a SimpleModel based on CNN/LSTM architecture, which predicts the next
 # value of a sequence based on the last 128 values

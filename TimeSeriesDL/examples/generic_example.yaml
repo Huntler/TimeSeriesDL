@@ -1,0 +1,7 @@
+dataset:
+ - d_type: train
+model_name: SimpleModel
+model_path: None
+model:
+ - input_size: 128
+train_epochs: 5
