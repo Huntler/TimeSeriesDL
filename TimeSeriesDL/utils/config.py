@@ -2,7 +2,7 @@
 from typing import Dict
 import yaml
 
-from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.model import BaseModel
 
 
 class Config:
