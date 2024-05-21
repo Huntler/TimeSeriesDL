@@ -6,7 +6,8 @@ from typing import Tuple
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
-from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.model import BaseModel
+from TimeSeriesDL.utils import config
 
 
 class SimpleModel(BaseModel):
@@ -192,3 +193,5 @@ class SimpleModel(BaseModel):
         # the last values are our predection ahead
         output_batch = output_batch[:, -future_steps:, :]
         return output_batch
+
+config.register_model("SimpleModel", SimpleModel)
