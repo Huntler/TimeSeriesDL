@@ -15,7 +15,8 @@ class Dataset(torch.utils.data.Dataset):
         torch (torch.utils.data.Dataset): Based on torch's dataset class.
     """
     def __init__(self, d_type: str = "train", normalize: bool = True, bounds: Tuple[int] = (0, 1),
-                 future_steps: int = 1, sequence_length: int = 1, precision: np.dtype = np.float32):
+                 future_steps: int = 1, sequence_length: int = 32, precision: np.dtype = np.float32,
+                 custom_path: str = None):
         super(Dataset, self).__init__()
 
         self._precision = precision
@@ -24,7 +25,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # load the dataset specified
         self._d_type = d_type
-        self._file = f"./data/{self._d_type}.mat"
+        self._file = custom_path if custom_path else f"./data/{self._d_type}.mat"
         self._mat = self.load_data()
 
         # normalize the dataset between values of o to 1
