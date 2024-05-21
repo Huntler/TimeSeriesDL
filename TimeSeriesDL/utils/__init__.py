@@ -1,2 +1,2 @@
-"""Module loads classes to be easily imported in other projects."""
+"""Module loads utilities, e.g. the config manager instance."""
 from .config import config

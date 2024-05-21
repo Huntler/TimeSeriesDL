@@ -6,15 +6,16 @@ from typing import Tuple
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
-from TimeSeriesDL.model import BaseModel
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 class SimpleModel(BaseModel):
-    """The simple model consists of a Conv Layer
+    """The simple model consists of a conv1d layer followed by a LSTM layer and 
+    two dense layers.
 
     Args:
-        BaseModel (_type_): _description_
+        BaseModel (BaseModel): The base model.
     """
 
     def __init__(self, input_size: int, hidden_dim: int = 64, xavier_init: bool = False,

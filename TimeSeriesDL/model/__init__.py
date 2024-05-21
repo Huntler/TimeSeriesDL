@@ -1,3 +1,3 @@
-"""Module loads classes to be easily imported in other projects."""
+"""Module loads model classes."""
 from .simple_model import SimpleModel
 from .base_model import BaseModel

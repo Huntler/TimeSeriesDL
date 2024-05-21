@@ -1,2 +1,2 @@
-"""Module loads classes to be easily imported in other projects."""
+"""Module loads dataset classes."""
 from .dataset import Dataset
