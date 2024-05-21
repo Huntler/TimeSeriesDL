@@ -26,6 +26,10 @@ with open("requirements.txt", "r", encoding="UTF-8") as f:
         elif line.split(" @")[0] in conda_list.stdout:
             requirements.append(line.split(" @")[0].strip())
 
+with open("requirements.txt", "w", encoding="UTF-8") as f:
+    for line in requirements:
+        f.write(line + "\n")
+
 # run the setup
 setup(
     author="Huntler",
