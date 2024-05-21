@@ -53,6 +53,8 @@ class BaseModel(nn.Module):
         if torch.cuda.is_available():
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
+        
+        self._precision = torch.float32
 
         # define object which where defined by children of this class
         self._scheduler: _LRScheduler = None
@@ -106,7 +108,8 @@ class BaseModel(nn.Module):
         architecture.
 
         Args:
-            x (Any): The input passed to the defined neural network.
+            x (Any): The input passed to the defined neural network. The shape is 
+            (batch_size, sequence_length, values)
             future_steps (int, optional): The amount of steps predicted.
 
         Raises:
@@ -141,8 +144,8 @@ class BaseModel(nn.Module):
                 rmse_losses = []
                 mae_losses = []
 
-                x = x.to(self._device)
-                y = y.to(self._device)
+                x = torch.tensor(x, dtype=self._precision, device=self._device)
+                y = torch.tensor(y, dtype=self._precision, device=self._device)
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
