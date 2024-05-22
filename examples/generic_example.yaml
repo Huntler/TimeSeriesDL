@@ -9,3 +9,4 @@ model_path: None
 model:
   input_size: 1
 train_epochs: 5
+device: cuda

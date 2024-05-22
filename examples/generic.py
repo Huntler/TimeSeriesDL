@@ -15,6 +15,7 @@ dataloader = DataLoader(data, **train_args["dataloader"])
 # to do so, a model needs to be registered using config.register_model()
 model_name = train_args["model_name"]
 simple_model: BaseModel = config.get_model(model_name)(**train_args["model"])
+simple_model.use_device(train_args["device"])
 
 # train the model on the dataset for 5 epochs and log the progress in a CLI
 # to review the model's training performance, open TensorBoard in a browser
