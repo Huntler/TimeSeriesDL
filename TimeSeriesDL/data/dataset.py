@@ -41,7 +41,7 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: The dataset.
         """
-        mat = scipy.io.loadmat(self._file).get(f"X{self._d_type}")
+        mat = scipy.io.loadmat(self._file).get(f"{self._d_type}")
         return mat.astype(self._precision)
 
     @property

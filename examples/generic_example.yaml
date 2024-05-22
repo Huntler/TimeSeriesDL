@@ -1,7 +1,7 @@
 dataset:
   d_type: train
   sequence_length: 32
-  custom_path: ./train.mat
+  custom_path: ./examples/train.mat
 dataloader:
   batch_size: 16
 model_name: SimpleModel

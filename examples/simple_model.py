@@ -5,7 +5,7 @@ from TimeSeriesDL.data import Dataset
 
 # create a dataset loader which loads a matplotlib matrix from ./data/train.mat
 # for this example, a custom path is set
-data = Dataset(d_type="train", sequence_length=128, custom_path="./train.mat")
+data = Dataset(d_type="train", sequence_length=128, custom_path="./examples/train.mat")
 dataloader = DataLoader(data, batch_size=16)
 
 # create a SimpleModel based on CNN/LSTM architecture, which predicts the next
