@@ -16,7 +16,7 @@ conda activate timeseries-dl
 
 ## Usage
 ### Training
-This program uses configuration `yaml`-files to set program arguments and deep learning hyperparameters. To configure a file, have a look at the example files located in ```TimeSeriesDL/examples/```. To start a example, call the following command (the config file path might differ)
+This program uses configuration `yaml`-files to set program arguments and deep learning hyperparameters. To configure a file, have a look at the example files located in ```examples/```. To start a example, call the following command (the config file path might differ)
 
 ```
 python TimeSeriesDL/examples/generic.py
