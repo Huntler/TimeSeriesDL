@@ -36,8 +36,6 @@ class Dataset(torch.utils.data.Dataset):
             self._scaler = self._scaler.fit(self._mat)
             self._mat = self. _scaler.transform(self._mat)
 
-        self._mat = self._mat[:, 0]
-
     def load_data(self) -> np.array:
         """Loads the dataset from the path self._file which is generated as './data/{d_type}.mat'.
 
