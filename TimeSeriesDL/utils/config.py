@@ -1,10 +1,14 @@
+"""This module contains the config manager."""
 from typing import Dict
 import yaml
 
-from ..model.base_model import BaseModel
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 class Config:
+    """Handles algorithm argument and model parameter load and save.
+    """
+
     def __init__(self) -> None:
         self.__model_register = {}
 
@@ -45,13 +49,19 @@ class Config:
         Returns:
             Dict: The dictionary containing all arguments.
         """
-        with open(path, "r") as stream:
+        with open(path, "r", encoding="UTF-8") as stream:
             args = yaml.safe_load(stream)
 
         return args
 
     def store_args(self, path: str, args: Dict) -> None:
-        with open(path, "w") as stream:
+        """Stores the argument dictionary to a given file path.
+
+        Args:
+            path (str): The file path.
+            args (Dict): The arguments.
+        """
+        with open(path, "w", encoding="UTF-8") as stream:
             yaml.safe_dump(args, stream)
 
 

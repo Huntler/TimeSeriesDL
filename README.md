@@ -1,65 +1,41 @@
-# Time-Series prediction: First assignment of Deep Learning
-Repository of the first assignment of the deep learning course (University Maastricht).
+# TimeSeriesDL: Predicting Future Curvature of Time Series
+Repository based on the first assignment of the deep learning course at Universiteit Maastricht. The TimeSeriesDL framework enables rapid model prototyping of time series prediction.
 
 ## Setup
 Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) on your system and execute the follwing command afterwards.
 
-```$ conda env create -f environment.yml```
+```conda env create -f environment.yml```
 
 After installation, the environment can be activated by calling 
 
-```$ conda activate dl-1```
+```conda activate timeseries-dl```
 
 ## Usage
 ### Training
-This program uses configuration files to set program arguments and deep learning hyperparameters. To configure a file, have a look at the default files located in ```config/```. To start a training, call the following command (the config file path might differ)
+This program uses configuration `yaml`-files to set program arguments and deep learning hyperparameters. To configure a file, have a look at the example files located in ```TimeSeriesDL/examples/```. To start a example, call the following command (the config file path might differ)
 
-```$ python main.py --config config/default_lstm.yml```
+```python TimeSeriesDL/examples/generic.py```
 
-Now, the training is running and a log folder is created in the directory ```runs/<MODEL_TYPE>/<TIME_STAMP>```. Every log folder contains the configuration which was used to start a training. By this, it is easier to keep track of the best hyperparameters found so far.
+Now, the training is running and a log folder is created in the directory ```runs/<MODEL_TYPE>/<TIME_STAMP>```. Every log folder contains the `yaml`-configuration which was used to start a training. By this, it is easier to keep track of the best hyperparameters found so far.
 
 ### Tensorboard
 Make sure the conda environment is enabled, then call
 
-```$ tensorboard --logdir=runs```
+```tensorboard --logdir=runs```
 
 to show all trainings in tensorboard. Press [here](http://localhost:6006) to access the webpage.
 
-## Configuration
-The configuration uses the YAML language and is generally built like
-
-```
-device: cpu
-model_name: REGISTERED_MODEL_NAME
-model_args:
-  ...
-dataset_args:
-  d_type: DATASET_NAME
-  normalize: True
-  bounds: [0, 1]
-  sequence_length: 200
-  future_steps: 1
-dataloader_args:
-  num_workers: 1
-  batch_size: 4
-  shuffle: True
-train_epochs: 10
-evaluation: None
-```
-
 ## Features
-- [x] GPU support for CUDA capable graphic cards
+- [x] GPU support for CUDA capable graphic cards and Apple Silicon
 - [x] Configuration management
-- [x] LSTM
-- [x] Use convolutional layers before passing values into the LSTM
-- [ ] GRU
-- [x] Xavier weight initialization
-- [x] ReLU, Sigmoid & Tanh
-- [ ] Dropout
-- [x] Variable learning rate (using decay)
+- [x] Base model to simplify code of custom models
+- [ ] Simple CNN/LSTM model (testing missing)
+- [ ] Advanced model exploiting multiple time series for prediction
 - [x] Tensorboard logging, model saving & more
 - [x] Dataset normalization & transformation
 - [x] Dataset random shuffle
 - [x] Split into train- / validationset
+- [ ] Load dataset as chunks for low memory training
 - [x] Prediction of 'x' steps into future
-- [x] visualization of dataset / prediction
+- [ ] Visualization of dataset / prediction
+- [ ] Automatic parameter tuning

@@ -1,0 +1,17 @@
+name: timeseries-dl
+channels:
+    - pytorch
+    - conda-forge 
+dependencies:
+    - python=3.10
+    - scikit-learn
+    - scipy
+    - pandas
+    - matplotlib
+    - tqdm
+    - pyyaml
+    - ipython
+    - pytorch
+    - torchvision
+    - tensorboard
+    - setuptools

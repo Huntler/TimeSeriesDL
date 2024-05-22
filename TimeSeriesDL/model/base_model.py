@@ -1,3 +1,4 @@
+"""This module contains the base model."""
 from datetime import datetime
 from typing import List
 
@@ -10,15 +11,37 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-def RMSELoss(yhat,y):
+
+def rmse_loss_fn(yhat, y):
+    """Calculates the RMSE loss sqrt(mean(y_hat - y)**2)
+
+    Args:
+        yhat (torch.tensor): Predicted value.
+        y (torch.tensor): Actual value.
+
+    Returns:
+        torch.tensor: Loss.
+    """
     return torch.sqrt(torch.mean((yhat-y)**2))
 
 
 class BaseModel(nn.Module):
-    def __init__(self) -> None:
+    """BaseModel class of any neural network predicting time series.
+
+    Args:
+        nn (nn.Module): Torch nn module.
+    """
+
+    def __init__(self, writer: SummaryWriter = None) -> None:
+        """Initializes the TensorBoard logger and checks for available GPU(s).
+
+        Args:
+            writer (SummaryWriter, optional): TensorBoard writer. Defaults to a generic path.
+        """
         super(BaseModel, self).__init__()
 
         # enable tensorboard
+        self._writer = writer
         if self._writer is None:
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
             self._tb_path = f"runs/{self.__tb_sub}"
@@ -30,20 +53,33 @@ class BaseModel(nn.Module):
         if torch.cuda.is_available():
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
+        
+        self._precision = torch.float32
 
         # define object which where defined by children of this class
         self._scheduler: _LRScheduler = None
         self._optim: Optimizer = None
-        self._loss_fn: Module = None
+        self._loss_fn: Module = torch.nn.MSELoss()
 
-        self.MAELoss = nn.L1Loss()
+        self._l1_loss = nn.L1Loss()
+        self._rmse_loss = rmse_loss_fn
         self.test_stats = None
 
     @property
     def log_path(self) -> str:
+        """Returns the log path of TensorBoard.
+
+        Returns:
+            str: Path as string.
+        """
         return self._tb_path
 
     def use_device(self, device: str) -> None:
+        """Sets the current device to run the model on. e.g. 'cpu', 'cuda', 'mps'.
+
+        Args:
+            device (str): The device to use.
+        """
         self._device = device
         self.to(self._device)
 
@@ -55,16 +91,25 @@ class BaseModel(nn.Module):
         params = self.state_dict()
         torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
 
-    def load(self, path) -> None:
+    def load(self, path: str) -> None:
+        """Loads a model with its parameters into this object.
+
+        Args:
+            path (str): The model's path.
+
+        Raises:
+            NotImplementedError: The Base model has not implemented this.
+        """
         raise NotImplementedError()
 
-    def forward(self, X, future_steps: int = 1):
+    def forward(self, x, future_steps: int = 1):
         """
         This method performs the forward call on the neural network 
         architecture.
 
         Args:
-            X (Any): The input passed to the defined neural network.
+            x (Any): The input passed to the defined neural network. The shape is 
+            (batch_size, sequence_length, values)
             future_steps (int, optional): The amount of steps predicted.
 
         Raises:
@@ -74,6 +119,15 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def learn(self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False):
+        """Trains the model on a dataset. Valdiation- and Testdatasets can be set as well.
+
+        Args:
+            train (Dataset): Dataset to train on.
+            validate (Dataset, optional): Validate model on this dataset. Defaults to None.
+            test (Dataset, optional): Test model on this dataset. Defaults to None.
+            epochs (int, optional): Run training for given amount of epochs. Defaults to 1.
+            verbose (bool, optional): Show progress on CLI. Defaults to False.
+        """
         # set the model into training mode
         self.train()
 
@@ -85,24 +139,24 @@ class BaseModel(nn.Module):
             mae_ep_losses = []
 
             # run for each batch in training set
-            for X, y in train_iterator:
+            for x, y in train_iterator:
                 mse_losses = []
                 rmse_losses = []
                 mae_losses = []
 
-                X = X.to(self._device)
-                y = y.to(self._device)
+                x = torch.tensor(x, dtype=self._precision, device=self._device)
+                y = torch.tensor(y, dtype=self._precision, device=self._device)
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
-                pred_y = self(X)
+                pred_y = self(x)
 
                 # calculate the gradient using backpropagation of the loss
                 loss = self._loss_fn(pred_y, y)
-                
+
                 # calculate rmse and mae losses as well
-                rmse_loss = RMSELoss(pred_y, y)
-                mae_loss = self.MAELoss(y, pred_y)
+                rmse_loss = self._rmse_loss(pred_y, y)
+                mae_loss = self._l1_loss(y, pred_y)
 
                 # reset the gradient and run backpropagation
                 self._optim.zero_grad()
@@ -129,8 +183,7 @@ class BaseModel(nn.Module):
                 mae_ep_losses.append(mae_losses)
                 self._writer.add_scalar(
                     "Train/mae_loss", mae_loss, self.__sample_position)
-                self.__sample_position += X.size(0)
-
+                self.__sample_position += x.size(0)
 
             # if there is an adaptive learning rate (scheduler) available
             if self._scheduler:
@@ -152,12 +205,12 @@ class BaseModel(nn.Module):
             if validate:
                 # set the model to eval mode, run validation and set to train mode again
                 self.eval()
-                accuracy = self.validate(validate, e)
+                _ = self.validate(validate, e)
                 self.train()
-            
+
             if test:
                 self.eval()
-                accuracy = self.test(test, e)
+                _ = self.test(test, e)
                 self.train()
 
         self.eval()
@@ -178,15 +231,16 @@ class BaseModel(nn.Module):
         mse_losses = []
         rmse_losses = []
         mae_losses = []
-        # predict all y's of the validation set and append the model's accuracy 
+
+        # predict all y's of the validation set and append the model's accuracy
         # to the list
-        for X, y in dataloader:
-            _y = self.predict(X, as_list=False)
+        for x, y in dataloader:
+            _y = self.predict(x, as_list=False)
 
             y = y.to(self._device)
             loss = self._loss_fn(_y, y)
-            rmse_loss = RMSELoss(_y, y)
-            mae_loss = self.MAELoss(_y, y)
+            rmse_loss = self._rmse_loss(_y, y)
+            mae_loss = self._l1_loss(_y, y)
 
             mse_losses.append(loss.item())
             rmse_losses.append(rmse_loss.item())
@@ -229,15 +283,15 @@ class BaseModel(nn.Module):
         rmse_losses = []
         mae_losses = []
 
-        # predict all y's of the validation set and append the model's accuracy 
+        # predict all y's of the validation set and append the model's accuracy
         # to the list
-        for X, y in dataloader:
-            _y = self.predict(X, as_list=False)
+        for x, y in dataloader:
+            _y = self.predict(x, as_list=False)
 
             y = y.to(self._device)
             loss = self._loss_fn(_y, y)
-            rmse_loss = RMSELoss(_y, y)
-            mae_loss = self.MAELoss(_y, y)
+            rmse_loss = self._rmse_loss(_y, y)
+            mae_loss = self._l1_loss(_y, y)
 
             mse_losses.append(loss.item())
             rmse_losses.append(rmse_loss.item())
@@ -268,19 +322,20 @@ class BaseModel(nn.Module):
 
         return accuracy
 
-    def predict(self, X, as_list: bool = True) -> List:
-        """This method only predicts future steps based on the given curve described by the datapoints X.
+    def predict(self, x: torch.tensor, as_list: bool = True) -> List:
+        """This method only predicts future steps based on the given curve described by 
+        the datapoints X.
 
         Args:
-            X (_type_): The datapoints.
+            x (torch.tensor): The datapoints.
             future_steps (int, optional): The amount of steps to look into future. Defaults to 1.
 
         Returns:
             List: The prediction.
         """
-        X = X.to(self._device)
+        x = x.to(self._device)
         with torch.no_grad():
-            out = self(X)
+            out = self(x)
             if as_list:
                 out = list(out.ravel().cpu().numpy())
 
