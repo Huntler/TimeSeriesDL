@@ -80,8 +80,11 @@ class BaseModel(nn.Module):
         Args:
             device (str): The device to use.
         """
-        self._device = device
-        self.to(self._device)
+        if device == "cuda":
+            if not torch.cuda.is_available():
+                print("No CUDA support on your system. Fallback to CPU.")
+            self._device = "cpu"
+            self.to(self._device)
 
     def save_to_default(self) -> None:
         """This method saves the current model state to the tensorboard 
