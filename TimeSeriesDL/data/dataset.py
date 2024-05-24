@@ -10,6 +10,7 @@ import numpy as np
 class Dataset(torch.utils.data.Dataset):
     """The dataset class loads a dataset from a scipy-matrix and normalize all values according 
     to boundaries defined. On very large dataset, this class can run in system out of memory issues.
+    The matrix to load should have the following shape: (n_features, n_samples)
 
     Args:
         torch (torch.utils.data.Dataset): Based on torch's dataset class.
@@ -32,7 +33,7 @@ class Dataset(torch.utils.data.Dataset):
         self._scaler = None
         if normalize:
             self._scaler = MinMaxScaler(feature_range=bounds)
-            self._scaler.fit(self._mat)
+            self._scaler = self._scaler.fit(self._mat)
             self._mat = self. _scaler.transform(self._mat)
 
     def load_data(self) -> np.array:
@@ -41,7 +42,8 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: The dataset.
         """
-        mat = scipy.io.loadmat(self._file).get(f"X{self._d_type}")
+        mat: np.array = scipy.io.loadmat(self._file).get(f"{self._d_type}")
+        mat = np.swapaxes(mat, 0, 1)
         return mat.astype(self._precision)
 
     @property
@@ -51,7 +53,7 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             int: The dataset's sample size.
         """
-        return 1
+        return self._mat.shape[0]
 
     def scale_back(self, data: List):
         """Scales the given data back using the inverse scaler.

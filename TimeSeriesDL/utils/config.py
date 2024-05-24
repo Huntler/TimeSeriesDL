@@ -1,6 +1,8 @@
 """This module contains the config manager."""
 from typing import Dict
 import yaml
+import torch
+import numpy as np
 
 from TimeSeriesDL.model.base_model import BaseModel
 
@@ -8,6 +10,11 @@ from TimeSeriesDL.model.base_model import BaseModel
 class Config:
     """Handles algorithm argument and model parameter load and save.
     """
+
+    _str_to_precisions = {"float16": (np.float16, torch.float16),
+                          "float32": (np.float32, torch.float32),
+                          "float64": (np.float64, torch.float64),
+                          "int8": (np.uint8, torch.uint8)}
 
     def __init__(self) -> None:
         self.__model_register = {}
@@ -20,6 +27,20 @@ class Config:
             model_class (BaseModel): The class of the model to register.
         """
         self.__model_register[name] = model_class
+
+    def _set_precision(self, d: Dict) -> Dict:
+        if not "precision" in d.keys():
+            return d
+
+        # check if precision is registered
+        precisions = self._str_to_precisions.get(d["precision"], None)
+        if not precisions:
+            return d
+
+        d["model"]["precision"] = precisions[1]
+        d["dataset"]["precision"] = precisions[0]
+
+        return d
 
     def get_model(self, name: str) -> BaseModel:
         """Method returns a registered BaseModel.
@@ -52,7 +73,7 @@ class Config:
         with open(path, "r", encoding="UTF-8") as stream:
             args = yaml.safe_load(stream)
 
-        return args
+        return self._set_precision(args)
 
     def store_args(self, path: str, args: Dict) -> None:
         """Stores the argument dictionary to a given file path.
@@ -61,6 +82,9 @@ class Config:
             path (str): The file path.
             args (Dict): The arguments.
         """
+        del args["model"]["precision"]
+        del args["dataset"]["precision"]
+
         with open(path, "w", encoding="UTF-8") as stream:
             yaml.safe_dump(args, stream)
 

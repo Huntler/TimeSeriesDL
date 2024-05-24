@@ -1,0 +1,20 @@
+dataset:
+  d_type: train
+  sequence_length: 4096
+  custom_path: ./examples/train.mat
+dataloader:
+  batch_size: 32
+  shuffle: True
+model_name: SimpleModel
+model_path: None
+model:
+  xavier_init: False
+  input_size: 2
+  latent_size: 8
+  kernel_size: 129
+  stride: 32
+  lstm_layers: 4
+  hidden_dim: 32
+precision: float32
+train_epochs: 1
+device: mps

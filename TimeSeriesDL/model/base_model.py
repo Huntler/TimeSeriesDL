@@ -8,6 +8,7 @@ from torch import nn
 from torch.nn import Module
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -53,7 +54,7 @@ class BaseModel(nn.Module):
         if torch.cuda.is_available():
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
-        
+
         self._precision = torch.float32
 
         # define object which where defined by children of this class
@@ -80,7 +81,24 @@ class BaseModel(nn.Module):
         Args:
             device (str): The device to use.
         """
-        self._device = device
+        self._device = "cpu"
+        if device == "cuda":
+            if not torch.cuda.is_available():
+                print("No CUDA support on your system. Fallback to CPU.")
+            else:
+                self._device = "cuda"
+
+        if device == "mps":
+            if torch.backends.mps.is_available():
+                if not torch.backends.mps.is_built():
+                    print("MPS not available because the current PyTorch install was not "
+                        "built with MPS enabled.")
+                else:
+                    self._device = "mps"
+            else:
+                print("MPS not available.")
+
+        print(f"Using {self._device} backend.")
         self.to(self._device)
 
     def save_to_default(self) -> None:
@@ -131,6 +149,11 @@ class BaseModel(nn.Module):
         # set the model into training mode
         self.train()
 
+        # check if the dataset is wrapped within a Dataloader
+        if not isinstance(train, DataLoader):
+            print("Please provide the dataset wrapped in a torch DataLoader")
+            exit(1)
+
         # run for n epochs specified
         for e in tqdm(range(epochs)):
             train_iterator = tqdm(train) if verbose else train
@@ -144,8 +167,8 @@ class BaseModel(nn.Module):
                 rmse_losses = []
                 mae_losses = []
 
-                x = torch.tensor(x, dtype=self._precision, device=self._device)
-                y = torch.tensor(y, dtype=self._precision, device=self._device)
+                x = x.to(self._device)
+                y = y.to(self._device)
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output

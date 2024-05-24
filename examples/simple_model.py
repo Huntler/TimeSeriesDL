@@ -5,13 +5,14 @@ from TimeSeriesDL.data import Dataset
 
 # create a dataset loader which loads a matplotlib matrix from ./data/train.mat
 # for this example, a custom path is set
-data = Dataset(d_type="train", sequence_length=128, custom_path="./train.mat")
-dataloader = DataLoader(data, batch_size=16)
+data = Dataset(d_type="train", sequence_length=128, custom_path="./examples/train.mat")
+dataloader = DataLoader(data, batch_size=16, shuffle=True)
 
 # create a SimpleModel based on CNN/LSTM architecture, which predicts the next
 # value of a sequence based on the last 128 values
 # the example dataset only contains one value type, hence the input_size is 1
 simple_model = SimpleModel(input_size=1)
+simple_model.use_device("cuda")
 
 # train the model on the dataset for 5 epochs and log the progress in a CLI
 # to review the model's training performance, open TensorBoard in a browser
