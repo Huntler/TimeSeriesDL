@@ -8,6 +8,7 @@ from torch import nn
 from torch.nn import Module
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -134,6 +135,11 @@ class BaseModel(nn.Module):
         # set the model into training mode
         self.train()
 
+        # check if the dataset is wrapped within a Dataloader
+        if not isinstance(train, DataLoader):
+            print("Please provide the dataset wrapped in a torch DataLoader")
+            exit(1)
+
         # run for n epochs specified
         for e in tqdm(range(epochs)):
             train_iterator = tqdm(train) if verbose else train
@@ -147,8 +153,8 @@ class BaseModel(nn.Module):
                 rmse_losses = []
                 mae_losses = []
 
-                x = torch.tensor(x, dtype=self._precision, device=self._device)
-                y = torch.tensor(y, dtype=self._precision, device=self._device)
+                x = x.to(self._device)
+                y = y.to(self._device)
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
