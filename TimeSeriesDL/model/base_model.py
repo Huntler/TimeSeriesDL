@@ -54,7 +54,7 @@ class BaseModel(nn.Module):
         if torch.cuda.is_available():
             self._device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self._device_name}")
-        
+
         self._precision = torch.float32
 
         # define object which where defined by children of this class
@@ -81,11 +81,25 @@ class BaseModel(nn.Module):
         Args:
             device (str): The device to use.
         """
+        self._device = "cpu"
         if device == "cuda":
             if not torch.cuda.is_available():
                 print("No CUDA support on your system. Fallback to CPU.")
-            self._device = "cpu"
-            self.to(self._device)
+            else:
+                self._device = "cuda"
+
+        if device == "mps":
+            if torch.backends.mps.is_available():
+                if not torch.backends.mps.is_built():
+                    print("MPS not available because the current PyTorch install was not "
+                        "built with MPS enabled.")
+                else:
+                    self._device = "mps"
+            else:
+                print("MPS not available.")
+
+        print(f"Using {self._device} backend.")
+        self.to(self._device)
 
     def save_to_default(self) -> None:
         """This method saves the current model state to the tensorboard 
