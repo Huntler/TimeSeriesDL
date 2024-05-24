@@ -11,10 +11,10 @@ class Config:
     """Handles algorithm argument and model parameter load and save.
     """
 
-    _precisions = {"float16": (np.float16, torch.float16),
-                   "float32": (np.float32, torch.float32),
-                   "float64": (np.float64, torch.float64),
-                   "int8": (np.uint8, torch.uint8)}
+    _str_to_precisions = {"float16": (np.float16, torch.float16),
+                          "float32": (np.float32, torch.float32),
+                          "float64": (np.float64, torch.float64),
+                          "int8": (np.uint8, torch.uint8)}
 
     def __init__(self) -> None:
         self.__model_register = {}
@@ -33,7 +33,7 @@ class Config:
             return d
 
         # check if precision is registered
-        precisions = self._precisions.get(d["precision"], None)
+        precisions = self._str_to_precisions.get(d["precision"], None)
         if not precisions:
             return d
 
@@ -82,6 +82,9 @@ class Config:
             path (str): The file path.
             args (Dict): The arguments.
         """
+        del args["model"]["precision"]
+        del args["dataset"]["precision"]
+
         with open(path, "w", encoding="UTF-8") as stream:
             yaml.safe_dump(args, stream)
 
