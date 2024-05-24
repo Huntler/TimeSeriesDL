@@ -83,7 +83,7 @@ class SimpleModel(BaseModel):
 
         self._linear_2 = torch.nn.Linear(
             64,
-            1,
+            self._input_size,
             dtype=self._precision
         )
 
