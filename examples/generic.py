@@ -30,7 +30,7 @@ train_args["model_path"] = simple_model.log_path
 config.store_args(f"{simple_model.log_path}/config.yml", train_args)
 
 # create a new instance to load a trained model, the following path is just a dummy
-new_instance: BaseModel = model_name(input_size=128)
+new_instance: BaseModel = config.get_model(model_name)(input_size=128)
 new_instance.load("runs/5-21-2024_203057/model_SimpleModel.torch")
 
 # predict on a trained model using the corresponding method and ask the output
