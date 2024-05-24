@@ -18,15 +18,18 @@ if not args.samples:
 path = args.path if args.path else"examples/train.mat"
 
 # generate the dataset
-x, y = functions.test_1(size=int(args.samples))
+samples = int(args.samples)
+x, y1 = functions.test_1(size=samples)
+x, y2 = functions.test_2(size=samples)
 
 # store the dataset
-savemat(path, {"train": y})
+savemat(path, {"train": [y1, y2]})
 
 # show the dataset
 if args.visualize:
     fig, ax = plt.subplots()
-    ax.scatter(x, y, c="tab:blue", label="test_1", alpha=0.3, edgecolors='none')
+    ax.scatter(x, y1, c="tab:blue", label="test_1", alpha=0.3, edgecolors='none')
+    ax.scatter(x, y2, c="tab:red", label="test_2", alpha=0.3, edgecolors='none')
 
     ax.legend()
     ax.grid(True)
