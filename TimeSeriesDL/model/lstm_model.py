@@ -66,7 +66,6 @@ class LSTM(BaseModel):
 
     def forward(self, x, future_steps: int = 1):
         # LSTM forward pass
-        x = torch.transpose(x, 2, 1)
         x, _ = self._lstm(x)
 
         # the last values are our predection ahead

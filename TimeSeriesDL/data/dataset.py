@@ -38,6 +38,7 @@ class Dataset(torch.utils.data.Dataset):
         self._d_type = d_type
         self._file = custom_path if custom_path else f"./data/{self._d_type}.mat"
         self._mat = self.load_data()
+        print("Dataset shape:", self._mat.shape)
 
         # normalize the dataset between values of o to 1
         self._scaler = None

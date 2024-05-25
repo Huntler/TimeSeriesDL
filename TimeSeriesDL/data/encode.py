@@ -3,6 +3,7 @@ from typing import Dict
 from tqdm import tqdm
 from scipy.io import savemat
 import torch
+import numpy as np
 from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.model.conv_ae_model import ConvAE
 
@@ -46,4 +47,6 @@ def encode_dataset(
         encoded += x
 
     # save the encoded dataset
-    savemat(export_path, {"train": encoded})
+    encoded = np.array(encoded)
+    encoded = np.swapaxes(encoded, 0, 1)
+    savemat(export_path, {"train": list(encoded)})
