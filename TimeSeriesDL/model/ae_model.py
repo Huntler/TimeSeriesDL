@@ -23,7 +23,7 @@ class AE(BaseModel):
         features: int = 1,
         sequence_length: int = 1,
         extracted_features: int = 1,
-        latent_space: int = 1,
+        latent_size: int = 1,
         kernel_size: int = 1,
         stride: int = 1,
         padding: int = 1,
@@ -33,6 +33,7 @@ class AE(BaseModel):
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
         log: bool = True,
+        precision: torch.dtype = torch.float32,
     ) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
@@ -55,8 +56,9 @@ class AE(BaseModel):
         self._kernel_size = kernel_size
         self._stride = stride
         self._padding = padding
+        self._precision = precision
 
-        self._latent_space = latent_space
+        self._latent_space = latent_size
         self._last_activation = get_activation_from_string(last_activation)
 
         # check if the latent space will be bigger than the output after the first conv1d layer
@@ -76,6 +78,7 @@ class AE(BaseModel):
                 self._kernel_size,
                 self._stride,
                 self._padding,
+                dtype=self._precision,
             ),
             nn.ReLU(),
             nn.Conv1d(
@@ -84,6 +87,7 @@ class AE(BaseModel):
                 self._kernel_size,
                 self._stride,
                 self._padding,
+                dtype=self._precision,
             ),
             nn.ReLU(),
         )
@@ -96,6 +100,7 @@ class AE(BaseModel):
                 self._kernel_size,
                 self._stride,
                 self._padding,
+                dtype=self._precision,
             ),
             nn.ReLU(),
             nn.ConvTranspose1d(
@@ -104,8 +109,9 @@ class AE(BaseModel):
                 self._kernel_size,
                 self._stride,
                 self._padding,
+                dtype=self._precision,
             ),
-            self._last_activation,
+            self._last_activation(),
         )
 
         self._loss_fn = torch.nn.MSELoss()
@@ -154,4 +160,5 @@ class AE(BaseModel):
         self.load_state_dict(torch.load(path))
         self.eval()
 
-config.register_model("SimpleModel", AE)
+
+config.register_model("AE", AE)
