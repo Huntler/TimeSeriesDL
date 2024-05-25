@@ -1,4 +1,5 @@
 """This module contains a simple CNN/LSTM model."""
+
 from argparse import ArgumentError
 from datetime import datetime
 from typing import Tuple
@@ -11,19 +12,32 @@ from TimeSeriesDL.model.base_model import BaseModel
 
 
 class SimpleModel(BaseModel):
-    """The simple model consists of a conv1d layer followed by a LSTM layer and 
+    """The simple model consists of a conv1d layer followed by a LSTM layer and
     two dense layers.
 
     Args:
         BaseModel (BaseModel): The base model.
     """
 
-    def __init__(self, input_size: int, latent_size: int = None, hidden_dim: int = 64,
-                 xavier_init: bool = False, out_act: str = "relu", lr: float = 1e-3,
-                 lr_decay: float = 9e-1, adam_betas: Tuple[float, float] = (9e-1, 999e-3),
-                 kernel_size: int = 15, stride: int = 1, padding: int = 0, channels: int = 1,
-                 lstm_layers: int = 1, future_steps: int = 1, log: bool = True,
-                 precision: torch.dtype = torch.float32) -> None:
+    def __init__(
+        self,
+        input_size: int,
+        latent_size: int = None,
+        hidden_dim: int = 64,
+        xavier_init: bool = False,
+        out_act: str = "relu",
+        lr: float = 1e-3,
+        lr_decay: float = 9e-1,
+        adam_betas: Tuple[float, float] = (9e-1, 999e-3),
+        kernel_size: int = 15,
+        stride: int = 1,
+        padding: int = 0,
+        channels: int = 1,
+        lstm_layers: int = 1,
+        future_steps: int = 1,
+        log: bool = True,
+        precision: torch.dtype = torch.float32,
+    ) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
         if log:
@@ -65,7 +79,7 @@ class SimpleModel(BaseModel):
             kernel_size=self._kernel_size,
             stride=self._stride,
             padding=self._padding,
-            dtype=self._precision
+            dtype=self._precision,
         )
 
         self._lstm = torch.nn.LSTM(
@@ -73,34 +87,21 @@ class SimpleModel(BaseModel):
             self._hidden_dim,
             self._lstm_layers,
             batch_first=True,
-            dtype=self._precision
+            dtype=self._precision,
         )
-        self._linear_1 = torch.nn.Linear(
-            self._hidden_dim,
-            64,
-            dtype=self._precision
-        )
+        self._linear_1 = torch.nn.Linear(self._hidden_dim, 64, dtype=self._precision)
 
-        self._linear_2 = torch.nn.Linear(
-            64,
-            self._input_size,
-            dtype=self._precision
-        )
+        self._linear_2 = torch.nn.Linear(64, self._input_size, dtype=self._precision)
 
         if self._xavier:
-            self._linear_1.weight = torch.nn.init.xavier_normal_(
-                self._linear_1.weight)
-            self._linear_2.weight = torch.nn.init.xavier_normal_(
-                self._linear_2.weight)
+            self._linear_1.weight = torch.nn.init.xavier_normal_(self._linear_1.weight)
+            self._linear_2.weight = torch.nn.init.xavier_normal_(self._linear_2.weight)
         else:
-            self._linear_1.weight = torch.nn.init.zeros_(
-                self._linear_1.weight)
-            self._linear_2.weight = torch.nn.init.zeros_(
-                self._linear_2.weight)
+            self._linear_1.weight = torch.nn.init.zeros_(self._linear_1.weight)
+            self._linear_2.weight = torch.nn.init.zeros_(self._linear_2.weight)
 
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(
-            self.parameters(), lr=lr, betas=adam_betas)
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     @property
@@ -113,8 +114,7 @@ class SimpleModel(BaseModel):
         return self._precision
 
     def load(self, path) -> None:
-        """Loads the model's parameter given a path
-        """
+        """Loads the model's parameter given a path"""
         self.load_state_dict(torch.load(path))
         self.eval()
 
@@ -134,9 +134,11 @@ class SimpleModel(BaseModel):
         elif self._output_activation == "tanh":
             x = torch.tanh(x)
         else:
-            raise ArgumentError(argument=None,
-                                message="Wrong output actiavtion specified " +
-                                "(relu | sigmoid | tanh).")
+            raise ArgumentError(
+                argument=None,
+                message="Wrong output actiavtion specified "
+                + "(relu | sigmoid | tanh).",
+            )
 
         return x
 
@@ -156,5 +158,6 @@ class SimpleModel(BaseModel):
         # finalize the prediction
         x = self._reduction_network(x)
         return x
+
 
 config.register_model("SimpleModel", SimpleModel)
