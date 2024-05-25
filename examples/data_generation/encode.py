@@ -1,12 +1,11 @@
 """Example usage of the any model."""
 import argparse
 import torch
-import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from scipy.io import savemat
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.model.ae_model import AE
+from TimeSeriesDL.model.conv_ae_model import ConvAE
 from TimeSeriesDL.utils import config
 
 parser = argparse.ArgumentParser()
@@ -26,7 +25,7 @@ if not train_args["model_path"]:
 
 # load the AE and prevent logging
 train_args["model"]["log"] = False
-ae = AE(**train_args["model"])
+ae = ConvAE(**train_args["model"])
 ae.load(path=train_args["model_path"])
 
 # load the dataset which should be encoded, make sure to disable AE mode

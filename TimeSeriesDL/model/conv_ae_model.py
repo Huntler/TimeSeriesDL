@@ -11,7 +11,7 @@ from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.config import config
 
 
-class AE(BaseModel):
+class ConvAE(BaseModel):
     """This model uses CNN to auto-encode time-series.
 
     Args:
@@ -173,4 +173,4 @@ class AE(BaseModel):
         self.eval()
 
 
-config.register_model("AE", AE)
+config.register_model("ConvAE", ConvAE)

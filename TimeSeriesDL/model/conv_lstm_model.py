@@ -11,7 +11,7 @@ from TimeSeriesDL.utils.config import config
 from TimeSeriesDL.model.base_model import BaseModel
 
 
-class SimpleModel(BaseModel):
+class ConvLSTM(BaseModel):
     """The simple model consists of a conv1d layer followed by a LSTM layer and
     two dense layers.
 
@@ -50,7 +50,7 @@ class SimpleModel(BaseModel):
             self._writer = False
 
         # initialize components using the parent class
-        super(SimpleModel, self).__init__(self._writer)
+        super(ConvLSTM, self).__init__(self._writer)
 
         # define sequence parameters
         self._future_steps = future_steps
@@ -161,4 +161,4 @@ class SimpleModel(BaseModel):
         return x
 
 
-config.register_model("SimpleModel", SimpleModel)
+config.register_model("ConvLSTM", ConvLSTM)

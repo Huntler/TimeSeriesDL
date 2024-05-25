@@ -1,4 +1,4 @@
 """Module loads model classes."""
-from .simple_model import SimpleModel
-from .ae_model import AE
+from .conv_lstm_model import ConvLSTM
+from .conv_ae_model import ConvAE
 from .base_model import BaseModel
