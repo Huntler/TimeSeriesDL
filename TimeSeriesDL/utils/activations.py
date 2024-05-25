@@ -2,9 +2,9 @@
 used with the config manager."""
 
 from typing import Callable
-from torch import nn
+import torch
 
-_str_to_activation = {"relu": nn.ReLU, "sigmoid": nn.Sigmoid, "tanh": nn.Tanh}
+_str_to_activation = {"relu": torch.relu, "sigmoid": torch.sigmoid, "tanh": torch.tanh}
 
 
 def get_activation_from_string(activation_str: str) -> Callable:
