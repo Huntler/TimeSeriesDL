@@ -26,5 +26,5 @@ simple_model.save_to_default()
 
 # also, store a modified copy of the training arguments containing the model path
 # this makes comparisons between multiple experiments easier<
-train_args["model_path"] = simple_model.log_path
+train_args["model_path"] = simple_model.log_path + "/model.torch"
 config.store_args(f"{simple_model.log_path}/config.yml", train_args)
