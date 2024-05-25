@@ -159,14 +159,14 @@ class BaseModel(nn.Module):
             exit(1)
 
         # run for n epochs specified
-        for e in tqdm(range(epochs)):
-            train_iterator = tqdm(train) if verbose else train
+        pbar = tqdm(total=epochs * len(train) * train.batch_size, desc=f"Epochs {epochs}", leave=True)
+        for e in range(epochs):
             mse_ep_losses = []
             rmse_ep_losses = []
             mae_ep_losses = []
 
             # run for each batch in training set
-            for x, y in train_iterator:
+            for x, y in train:
                 mse_losses = []
                 rmse_losses = []
                 mae_losses = []
@@ -212,6 +212,7 @@ class BaseModel(nn.Module):
                     "Train/mae_loss", mae_loss, self.__sample_position
                 )
                 self.__sample_position += x.size(0)
+                pbar.update(train.batch_size)
 
             # if there is an adaptive learning rate (scheduler) available
             if self._scheduler:

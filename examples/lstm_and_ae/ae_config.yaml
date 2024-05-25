@@ -16,5 +16,5 @@ model:
   kernel_size: 65
   stride: 16
 precision: float32
-train_epochs: 1
+train_epochs: 2
 device: mps
