@@ -26,7 +26,7 @@ class AE(BaseModel):
         latent_size: int = 1,
         kernel_size: int = 1,
         stride: int = 1,
-        padding: int = 1,
+        padding: int = 0,
         last_activation: str = "relu",
         lr: float = 1e-3,
         lr_decay: float = 9e-1,
@@ -62,57 +62,54 @@ class AE(BaseModel):
         self._last_activation = get_activation_from_string(last_activation)
 
         # check if the latent space will be bigger than the output after the first conv1d layer
-        ef_length = ((sequence_length - kernel_size + 2 * padding) / stride) + 1
-        ls_length = ((ef_length - kernel_size + 2 * padding) / stride) + 1
-        if ef_length > ls_length:
+        ef_length = int((sequence_length - kernel_size + 2 * padding) / stride) + 1
+        ls_length = int((ef_length - kernel_size + 2 * padding) / stride) + 1
+        if ef_length < ls_length:
             print(
                 "Warning: Output after first encoder layer is smaller than latent "
-                + f"space. {ef_length} > {ls_length}"
+                + f"space. {ef_length} < {ls_length}"
             )
 
+        self._enc_1_len = ef_length
+        self._enc_2_len = ls_length
+
         # setup the encoder based on CNN
-        self._encoder = nn.Sequential(
-            nn.Conv1d(
+        self._encoder_1 = nn.Conv1d(
                 self._features,
                 self._extracted_features,
                 self._kernel_size,
                 self._stride,
                 self._padding,
                 dtype=self._precision,
-            ),
-            nn.ReLU(),
-            nn.Conv1d(
+            )
+
+        self._encoder_2 = nn.Conv1d(
                 self._extracted_features,
                 self._latent_space,
                 self._kernel_size,
                 self._stride,
                 self._padding,
                 dtype=self._precision,
-            ),
-            nn.ReLU(),
-        )
+            )
 
         # setup decoder
-        self._decoder = nn.Sequential(
-            nn.ConvTranspose1d(
+        self._decoder_1 = nn.ConvTranspose1d(
                 self._latent_space,
                 self._extracted_features,
                 self._kernel_size,
                 self._stride,
                 self._padding,
                 dtype=self._precision,
-            ),
-            nn.ReLU(),
-            nn.ConvTranspose1d(
+            )
+
+        self._decoder_2 = nn.ConvTranspose1d(
                 self._extracted_features,
                 self._features,
                 self._kernel_size,
                 self._stride,
                 self._padding,
                 dtype=self._precision,
-            ),
-            self._last_activation(),
-        )
+            )
 
         self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
@@ -127,7 +124,14 @@ class AE(BaseModel):
         Returns:
             torch.tensor: The encoded data.
         """
-        return self._encoder(x)
+        # change input to batch, features, samples
+        x: torch.tensor = torch.transpose(x, 2, 1)
+        x = self._encoder_1.forward(x)
+
+        x = torch.relu(x)
+        x = self._encoder_2.forward(x)
+
+        return torch.relu(x)
 
     def decode(self, x: torch.tensor) -> torch.tensor:
         """Decodes the input, should be the same as before encoding the data.
@@ -138,7 +142,15 @@ class AE(BaseModel):
         Returns:
             torch.tensor: The decoded data.
         """
-        return self._decoder(x)
+        batch, _, _ = x.shape
+
+        x = self._decoder_1.forward(x, [batch, self._extracted_features, self._enc_1_len])
+        x = torch.relu(x)
+        x = self._decoder_2.forward(x, [batch, self._features, self._sequence_length])
+
+        # change output to batch, samples, features
+        x: torch.tensor = torch.transpose(x, 2, 1)
+        return self._last_activation(x)
 
     def freeze(self, unfreeze: bool = False) -> None:
         """Freezes or unfreezes the parameter of this AE to enable or disable parameter tuning.
@@ -153,8 +165,8 @@ class AE(BaseModel):
             param.requires_grad = not unfreeze
 
     def forward(self, x: torch.tensor, future_steps: int = 0):
-        x = self._encoder(x)
-        return self._decoder(x)
+        x = self.encode(x)
+        return self.decode(x)
 
     def load(self, path: str) -> None:
         self.load_state_dict(torch.load(path))
