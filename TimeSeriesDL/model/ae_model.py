@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.utils.activations import get_activation_from_string
 from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.utils.config import config
 
 
 class AE(BaseModel):
@@ -152,3 +153,5 @@ class AE(BaseModel):
     def load(self, path: str) -> None:
         self.load_state_dict(torch.load(path))
         self.eval()
+
+config.register_model("SimpleModel", AE)
