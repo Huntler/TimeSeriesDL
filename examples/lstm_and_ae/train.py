@@ -38,8 +38,6 @@ def train(path: str) -> BaseModel:
     # this makes comparisons between multiple experiments easier<
     train_args["model_path"] = model.log_path + "/model.torch"
     config.store_args(f"{model.log_path}/config.yml", train_args)
-
-    model.use_device("cpu")
     return model
 
 if __name__ == "__main__":
