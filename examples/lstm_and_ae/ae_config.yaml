@@ -1,0 +1,20 @@
+dataset:
+  d_type: train
+  sequence_length: 4096
+  custom_path: ./examples/train.mat
+  ae_mode: True
+dataloader:
+  batch_size: 256
+  shuffle: True
+model_name: ConvAE
+model_path: None
+model:
+  sequence_length: 4096
+  features: 2
+  extracted_features: 4
+  latent_size: 16
+  kernel_size: 65
+  stride: 16
+precision: float32
+train_epochs: 1
+device: mps
