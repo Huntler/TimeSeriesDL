@@ -14,7 +14,7 @@ def f(x: float) -> float:
     return (1 / x) + np.sin(np.power(x, x)) / (x - 4)
 
 def test_1(size: int) -> Tuple[np.array, np.array]:
-    """(1 / x) + math.sin(x**x) / (x - 4)
+    """f(x)
 
     Args:
         size (int): Number of samples to generate.
@@ -22,11 +22,11 @@ def test_1(size: int) -> Tuple[np.array, np.array]:
     Returns:
         Tuple: x and y values.
     """
-    x = np.linspace(0.5, 3.0, num=size)
+    x = np.linspace(0.5, 3.5, num=size)
     return x, f(x)
 
 def test_2(size: int) -> Tuple[np.array, np.array]:
-    """f(x + 0.5) - x * f(x + 0.5) 
+    """f(x * 0.98 + 0.2)
 
     Args:
         size (int): Number of samples to generate.
@@ -34,5 +34,5 @@ def test_2(size: int) -> Tuple[np.array, np.array]:
     Returns:
         Tuple: x and y values.
     """
-    x = np.linspace(0.5, 3.0, num=size)
-    return x, f(x + 0.5) + x * f(x + 0.5)
+    x = np.linspace(0.5, 3.5, num=size)
+    return x, f(x * 0.98 + 0.2)

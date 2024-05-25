@@ -5,7 +5,7 @@ from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.utils import config
 
 # load training arguments (equals example/simple_model.py)
-train_args = config.get_args("./examples/generic_example.yaml")
+train_args = config.get_args("./examples/simple/config.yaml")
 
 # create a dataset loader which loads a matplotlib matrix from ./train.mat
 data = Dataset(**train_args["dataset"])
@@ -26,7 +26,7 @@ simple_model.save_to_default()
 
 # also, store a modified copy of the training arguments containing the model path
 # this makes comparisons between multiple experiments easier<
-train_args["model_path"] = simple_model.log_path
+train_args["model_path"] = simple_model.log_path + "/model.torch"
 config.store_args(f"{simple_model.log_path}/config.yml", train_args)
 
 # create a new instance to load a trained model, the following path is just a dummy

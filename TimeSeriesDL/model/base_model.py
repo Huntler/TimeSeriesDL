@@ -1,4 +1,5 @@
 """This module contains the base model."""
+
 from datetime import datetime
 from typing import List
 
@@ -23,7 +24,7 @@ def rmse_loss_fn(yhat, y):
     Returns:
         torch.tensor: Loss.
     """
-    return torch.sqrt(torch.mean((yhat-y)**2))
+    return torch.sqrt(torch.mean((yhat - y) ** 2))
 
 
 class BaseModel(nn.Module):
@@ -91,8 +92,10 @@ class BaseModel(nn.Module):
         if device == "mps":
             if torch.backends.mps.is_available():
                 if not torch.backends.mps.is_built():
-                    print("MPS not available because the current PyTorch install was not "
-                        "built with MPS enabled.")
+                    print(
+                        "MPS not available because the current PyTorch install was not "
+                        "built with MPS enabled."
+                    )
                 else:
                     self._device = "mps"
             else:
@@ -102,12 +105,11 @@ class BaseModel(nn.Module):
         self.to(self._device)
 
     def save_to_default(self) -> None:
-        """This method saves the current model state to the tensorboard 
+        """This method saves the current model state to the tensorboard
         directory.
         """
-        model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
-        torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
+        torch.save(params, f"{self._tb_path}/model.torch")
 
     def load(self, path: str) -> None:
         """Loads a model with its parameters into this object.
@@ -122,21 +124,23 @@ class BaseModel(nn.Module):
 
     def forward(self, x, future_steps: int = 1):
         """
-        This method performs the forward call on the neural network 
+        This method performs the forward call on the neural network
         architecture.
 
         Args:
-            x (Any): The input passed to the defined neural network. The shape is 
+            x (Any): The input passed to the defined neural network. The shape is
             (batch_size, sequence_length, values)
             future_steps (int, optional): The amount of steps predicted.
 
         Raises:
-            NotImplementedError: The Base model has not implementation 
+            NotImplementedError: The Base model has not implementation
                                  for this.
         """
         raise NotImplementedError
 
-    def learn(self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False):
+    def learn(
+        self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False
+    ):
         """Trains the model on a dataset. Valdiation- and Testdatasets can be set as well.
 
         Args:
@@ -155,14 +159,14 @@ class BaseModel(nn.Module):
             exit(1)
 
         # run for n epochs specified
-        for e in tqdm(range(epochs)):
-            train_iterator = tqdm(train) if verbose else train
+        pbar = tqdm(total=epochs * len(train) * train.batch_size, desc=f"Epochs {epochs}", leave=True)
+        for e in range(epochs):
             mse_ep_losses = []
             rmse_ep_losses = []
             mae_ep_losses = []
 
             # run for each batch in training set
-            for x, y in train_iterator:
+            for x, y in train:
                 mse_losses = []
                 rmse_losses = []
                 mae_losses = []
@@ -194,19 +198,21 @@ class BaseModel(nn.Module):
                 # log for the statistics
                 mse_losses = np.mean(mse_losses, axis=0)
                 mse_ep_losses.append(mse_losses)
-                self._writer.add_scalar(
-                    "Train/loss", loss, self.__sample_position)
+                self._writer.add_scalar("Train/loss", loss, self.__sample_position)
 
                 rmse_losses = np.mean(rmse_losses, axis=0)
                 rmse_ep_losses.append(rmse_losses)
                 self._writer.add_scalar(
-                    "Train/rmse_loss", rmse_loss, self.__sample_position)
+                    "Train/rmse_loss", rmse_loss, self.__sample_position
+                )
 
                 mae_losses = np.mean(mae_losses, axis=0)
                 mae_ep_losses.append(mae_losses)
                 self._writer.add_scalar(
-                    "Train/mae_loss", mae_loss, self.__sample_position)
+                    "Train/mae_loss", mae_loss, self.__sample_position
+                )
                 self.__sample_position += x.size(0)
+                pbar.update(train.batch_size)
 
             # if there is an adaptive learning rate (scheduler) available
             if self._scheduler:
@@ -330,9 +336,7 @@ class BaseModel(nn.Module):
         rmse_loss = np.mean(np.array(rmse_losses))
         mae_loss = np.mean(np.array(mae_losses))
 
-        self.test_stats = (
-            accuracy, variance, mse_loss, rmse_loss, mae_loss
-        )
+        self.test_stats = (accuracy, variance, mse_loss, rmse_loss, mae_loss)
 
         # log to the tensorboard if wanted
         if log_step != -1:
@@ -346,7 +350,7 @@ class BaseModel(nn.Module):
         return accuracy
 
     def predict(self, x: torch.tensor, as_list: bool = True) -> List:
-        """This method only predicts future steps based on the given curve described by 
+        """This method only predicts future steps based on the given curve described by
         the datapoints X.
 
         Args:
