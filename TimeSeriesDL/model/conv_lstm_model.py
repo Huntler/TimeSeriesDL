@@ -39,7 +39,7 @@ class ConvLSTM(BaseModel):
         log: bool = True,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        # if logging enalbed, then create a tensorboard writer, otherwise prevent the
+        # if logging enabled, then create a tensorboard writer, otherwise prevent the
         # parent class to create a standard writer
         if log:
             now = datetime.now()
