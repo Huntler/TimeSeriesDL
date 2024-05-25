@@ -5,7 +5,7 @@ from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.utils import config
 
 # load training arguments (equals example/simple_model.py)
-train_args = config.get_args("./examples/generic_example.yaml")
+train_args = config.get_args("./examples/simple_example.yaml")
 
 # create a dataset loader which loads a matplotlib matrix from ./train.mat
 data = Dataset(**train_args["dataset"])

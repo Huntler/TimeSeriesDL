@@ -3,7 +3,7 @@ dataset:
   sequence_length: 4096
   custom_path: ./examples/train.mat
 dataloader:
-  batch_size: 32
+  batch_size: 128
   shuffle: True
 model_name: SimpleModel
 model_path: None
@@ -16,5 +16,5 @@ model:
   lstm_layers: 4
   hidden_dim: 32
 precision: float32
-train_epochs: 1
+train_epochs: 5
 device: mps
