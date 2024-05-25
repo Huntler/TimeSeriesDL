@@ -108,9 +108,8 @@ class BaseModel(nn.Module):
         """This method saves the current model state to the tensorboard
         directory.
         """
-        model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
-        torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
+        torch.save(params, f"{self._tb_path}/model.torch")
 
     def load(self, path: str) -> None:
         """Loads a model with its parameters into this object.
