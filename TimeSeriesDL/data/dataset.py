@@ -1,5 +1,5 @@
-
 """This module contains the Dataset loader."""
+
 from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
 import scipy.io
@@ -8,21 +8,31 @@ import numpy as np
 
 
 class Dataset(torch.utils.data.Dataset):
-    """The dataset class loads a dataset from a scipy-matrix and normalize all values according 
+    """The dataset class loads a dataset from a scipy-matrix and normalize all values according
     to boundaries defined. On very large dataset, this class can run in system out of memory issues.
     The matrix to load should have the following shape: (n_features, n_samples)
 
     Args:
         torch (torch.utils.data.Dataset): Based on torch's dataset class.
     """
-    def __init__(self, d_type: str = "train", normalize: bool = True, bounds: Tuple[int] = (0, 1),
-                 future_steps: int = 1, sequence_length: int = 32, precision: np.dtype = np.float32,
-                 custom_path: str = None):
+
+    def __init__(
+        self,
+        d_type: str = "train",
+        normalize: bool = True,
+        bounds: Tuple[int] = (0, 1),
+        future_steps: int = 1,
+        sequence_length: int = 32,
+        precision: np.dtype = np.float32,
+        custom_path: str = None,
+        ae_mode: bool = False
+    ):
         super(Dataset, self).__init__()
 
         self._precision = precision
         self._seq = sequence_length
         self._f_seq = future_steps
+        self._ae_mode = ae_mode
 
         # load the dataset specified
         self._d_type = d_type
@@ -34,7 +44,7 @@ class Dataset(torch.utils.data.Dataset):
         if normalize:
             self._scaler = MinMaxScaler(feature_range=bounds)
             self._scaler = self._scaler.fit(self._mat)
-            self._mat = self. _scaler.transform(self._mat)
+            self._mat = self._scaler.transform(self._mat)
 
     def load_data(self) -> np.array:
         """Loads the dataset from the path self._file which is generated as './data/{d_type}.mat'.
@@ -71,6 +81,11 @@ class Dataset(torch.utils.data.Dataset):
         return max(1, len(self._mat) - self._f_seq - self._seq)
 
     def __getitem__(self, index):
-        x = self._mat[index:self._seq + index]
-        y = self._mat[self._seq + index:self._seq + index + self._f_seq]
+        x = self._mat[index : self._seq + index]
+
+        # the auto encoder requires input = output
+        if self._ae_mode:
+            return x, x
+
+        y = self._mat[self._seq + index : self._seq + index + self._f_seq]
         return x, y
