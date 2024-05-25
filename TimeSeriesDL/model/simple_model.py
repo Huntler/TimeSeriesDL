@@ -35,6 +35,7 @@ class SimpleModel(BaseModel):
         channels: int = 1,
         lstm_layers: int = 1,
         future_steps: int = 1,
+        tag: str = "",
         log: bool = True,
         precision: torch.dtype = torch.float32,
     ) -> None:
@@ -43,7 +44,7 @@ class SimpleModel(BaseModel):
         if log:
             now = datetime.now()
             self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-            self._tb_path = f"runs/SimpleModel/{self._tb_sub}"
+            self._tb_path = f"runs/{tag}/SimpleModel/{self._tb_sub}"
             self._writer = SummaryWriter(self._tb_path)
         else:
             self._writer = False

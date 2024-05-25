@@ -30,6 +30,7 @@ class AE(BaseModel):
         lr: float = 1e-3,
         lr_decay: float = 9e-1,
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
+        tag: str = "",
         log: bool = True,
     ) -> None:
         # if logging enalbed, then create a tensorboard writer, otherwise prevent the
@@ -37,7 +38,7 @@ class AE(BaseModel):
         if log:
             now = datetime.now()
             self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-            self._tb_path = f"runs/SimpleModel/{self._tb_sub}"
+            self._tb_path = f"runs/{tag}/AE/{self._tb_sub}"
             self._writer = SummaryWriter(self._tb_path)
         else:
             self._writer = False
