@@ -1,5 +1,7 @@
 """Example usage of the any model."""
 import argparse
+import torch
+import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from scipy.io import savemat
@@ -22,7 +24,8 @@ if not train_args["model_path"]:
     print("The AE model needs to be trained first.")
     exit(1)
 
-# load the AE
+# load the AE and prevent logging
+train_args["model"]["log"] = False
 ae = AE(**train_args["model"])
 ae.load(path=train_args["model_path"])
 
@@ -35,6 +38,7 @@ encoded = []
 for x, _ in tqdm(dataloader):
     # encode the data and unwrap the batch
     x = ae.encode(x)
+    x = torch.transpose(x, 2, 1)
     x = list(x.cpu().detach().numpy()[0, :, :])
     encoded.append(x)
 
