@@ -9,12 +9,14 @@ from TimeSeriesDL.model.conv_ae_model import ConvAE
 
 
 def encode_dataset(
-    train_args: Dict, export_path: str = "./examples/train_encoded.mat"
+    train_args: Dict, export_path: str = "./examples/train_encoded.mat",
+    dataset_class = Dataset
 ) -> None:
     """Loads a trained ConvAE using the config dictionary.
 
     Args:
         train_args (Dict): The config of a trained ConvAE.
+        dataset_class (Any): The dataset class to use. Defaults to Dataset.
     """
     # check if the model to load is trained and type AE
     if train_args["model_name"] != "ConvAE":
@@ -32,7 +34,7 @@ def encode_dataset(
 
     # load the dataset which should be encoded, make sure to disable AE mode
     train_args["dataset"]["ae_mode"] = False
-    data = Dataset(**train_args["dataset"])
+    data = dataset_class(**train_args["dataset"])
 
     encoded = []
     for i in tqdm(range(0, data.sample_size, train_args["dataset"]["sequence_length"])):
