@@ -364,6 +364,6 @@ class BaseModel(nn.Module):
         with torch.no_grad():
             out = self(x)
             if as_list:
-                out = list(out.ravel().cpu().numpy())
+                out = list(out.cpu().numpy())
 
         return out
