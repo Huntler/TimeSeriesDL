@@ -14,6 +14,7 @@ class LSTM(BaseModel):
     def __init__(
         self,
         features: int = 1,
+        future_steps: int = 1,
         lstm_layers: int = 1,
         hidden_dim: int = 64,
         last_activation: str = "relu",
@@ -43,6 +44,7 @@ class LSTM(BaseModel):
 
         # data parameter
         self._features = features
+        self._future_steps = future_steps
 
         self._output_activation = get_activation_from_string(last_activation)
         self._precision = precision
@@ -64,12 +66,12 @@ class LSTM(BaseModel):
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
-    def forward(self, x, future_steps: int = 1):
+    def forward(self, x):
         # LSTM forward pass
         x, _ = self._lstm(x)
 
         # the last values are our predection ahead
-        x = x[:, -future_steps:, :]
+        x = x[:, -self._future_steps:, :]
 
         # reduce the LSTM's output by using a few dense layers
         x = torch.relu(x)
