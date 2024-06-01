@@ -125,7 +125,7 @@ class ConvAE(BaseModel):
             torch.tensor: The encoded data.
         """
         # change input to batch, features, samples
-        x: torch.tensor = torch.transpose(x, 2, 1)
+        x: torch.tensor = torch.swapaxes(x, 2, 1)
         x = self._encoder_1.forward(x)
 
         x = torch.relu(x)
@@ -149,7 +149,7 @@ class ConvAE(BaseModel):
         x = self._decoder_2.forward(x, [batch, self._features, self._sequence_length])
 
         # change output to batch, samples, features
-        x: torch.tensor = torch.transpose(x, 2, 1)
+        x: torch.tensor = torch.swapaxes(x, 2, 1)
         return self._last_activation(x)
 
     def freeze(self, unfreeze: bool = False) -> None:
