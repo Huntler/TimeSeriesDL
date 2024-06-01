@@ -62,7 +62,8 @@ class ConvAE(BaseModel):
         self._last_activation = get_activation_from_string(last_activation)
 
         # check if the latent space will be bigger than the output after the first conv1d layer
-        ef_length = int((sequence_length - kernel_size + 2 * padding) / stride) + 1
+        ef_length = int(
+            (sequence_length - kernel_size + 2 * padding) / stride) + 1
         ls_length = int((ef_length - kernel_size + 2 * padding) / stride) + 1
         if ef_length < ls_length:
             print(
@@ -75,51 +76,62 @@ class ConvAE(BaseModel):
 
         # setup the encoder based on CNN
         self._encoder_1 = nn.Conv1d(
-                self._features,
-                self._extracted_features,
-                self._kernel_size,
-                self._stride,
-                self._padding,
-                dtype=self._precision,
-            )
+            self._features,
+            self._extracted_features,
+            self._kernel_size,
+            self._stride,
+            self._padding,
+            dtype=self._precision,
+        )
 
         self._encoder_2 = nn.Conv1d(
-                self._extracted_features,
-                self._latent_space,
-                self._kernel_size,
-                self._stride,
-                self._padding,
-                dtype=self._precision,
-            )
+            self._extracted_features,
+            self._latent_space,
+            self._kernel_size,
+            self._stride,
+            self._padding,
+            dtype=self._precision,
+        )
 
         # setup decoder
         self._decoder_1 = nn.ConvTranspose1d(
-                self._latent_space,
-                self._extracted_features,
-                self._kernel_size,
-                self._stride,
-                self._padding,
-                dtype=self._precision,
-            )
+            self._latent_space,
+            self._extracted_features,
+            self._kernel_size,
+            self._stride,
+            self._padding,
+            dtype=self._precision,
+        )
 
         self._decoder_2 = nn.ConvTranspose1d(
-                self._extracted_features,
-                self._features,
-                self._kernel_size,
-                self._stride,
-                self._padding,
-                dtype=self._precision,
-            )
+            self._extracted_features,
+            self._features,
+            self._kernel_size,
+            self._stride,
+            self._padding,
+            dtype=self._precision,
+        )
 
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
+        self._optim = torch.optim.AdamW(
+            self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
-    def encode(self, x: torch.tensor) -> torch.tensor:
+    @property
+    def latent_length(self) -> int:
+        """Sample length of the latent space.
+
+        Returns:
+            int: Length of the latent space.
+        """
+        return self._enc_2_len
+
+    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         """Encodes the input.
 
         Args:
             x (torch.tensor): The input.
+            as_array (bool): Retuns the encoded value as np.array. Defaults to False.
 
         Returns:
             torch.tensor: The encoded data.
@@ -127,30 +139,40 @@ class ConvAE(BaseModel):
         # change input to batch, features, samples
         x: torch.tensor = torch.swapaxes(x, 2, 1)
         x = self._encoder_1.forward(x)
-
         x = torch.relu(x)
+
         x = self._encoder_2.forward(x)
+        x = torch.relu(x)
 
-        return torch.relu(x)
+        if as_array:
+            return x.cpu().detach().numpy()
+        return x
 
-    def decode(self, x: torch.tensor) -> torch.tensor:
+    def decode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         """Decodes the input, should be the same as before encoding the data.
 
         Args:
             x (torch.tensor): The input.
+            as_array (bool): Retuns the encoded value as np.array. Defaults to False.
 
         Returns:
             torch.tensor: The decoded data.
         """
         batch, _, _ = x.shape
 
-        x = self._decoder_1.forward(x, [batch, self._extracted_features, self._enc_1_len])
+        x = self._decoder_1.forward(
+            x, [batch, self._extracted_features, self._enc_1_len])
         x = torch.relu(x)
-        x = self._decoder_2.forward(x, [batch, self._features, self._sequence_length])
+        x = self._decoder_2.forward(
+            x, [batch, self._features, self._sequence_length])
 
         # change output to batch, samples, features
         x: torch.tensor = torch.swapaxes(x, 2, 1)
-        return self._last_activation(x)
+        x = self._last_activation(x)
+
+        if as_array:
+            return x.cpu().detach().numpy()
+        return x
 
     def freeze(self, unfreeze: bool = False) -> None:
         """Freezes or unfreezes the parameter of this AE to enable or disable parameter tuning.

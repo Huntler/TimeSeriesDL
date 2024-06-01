@@ -1,5 +1,8 @@
 """Example usage of the any model."""
+import numpy as np
+import torch
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 from TimeSeriesDL.model import BaseModel
 from TimeSeriesDL.data import Dataset, encode_dataset
 from TimeSeriesDL.model import ConvAE, LSTM
@@ -44,9 +47,44 @@ if __name__ == "__main__":
     # train the auto encoder and encode the dataset
     print("Train the ConvAE")
     ae: ConvAE = train("./examples/lstm_and_ae/ae_config.yaml")
+    print(f"Latent space shape is {ae.latent_space_shape}")
+
     print("\nEncode dataset")
-    encode_dataset(config.get_args(ae.log_path + "/config.yml"))
+    encoded: np.array = encode_dataset(config.get_args(ae.log_path + "/config.yml"))
 
     # train the lstm on the encoded dataset, then decode: ae.decode(lstm.predict(x))
     print("\nTrain LSTM")
     lstm: LSTM = train("./examples/lstm_and_ae/lstm_config.yaml")
+
+    # use trained lstm to predict on a dataset
+    print("\nPredict using LSTM/Decoder")
+    sequence, latent_features = ae.latent_space_shape
+    print(encoded.shape)
+    for i in range(0, encoded.shape[1], sequence):
+        x = torch.tensor([encoded[:, i:i + sequence + 1]])
+        x = torch.swapaxes(x, 1, 2)
+        x = lstm.predict(x, as_array=True)
+
+        if i + sequence + 1 < encoded.shape[1]:
+            encoded[:, i + sequence + 1] = x
+    print(encoded.shape)
+
+    decoded = []
+    for i in range(0, encoded.shape[1], sequence):
+        x = torch.tensor([encoded[:, i:i + sequence]])
+        if x.shape[2] == sequence:
+            x = ae.decode(x)
+            decoded += list(x.cpu().detach().numpy()[0])
+
+    decoded = np.array(decoded)
+    print(decoded.shape)
+
+    fig, ax = plt.subplots()
+    x = np.linspace(0.5, 3.5, len(decoded[:, 0]))
+    ax.scatter(x, decoded[:, 0], c="tab:blue", label="test_1", alpha=0.3, edgecolors='none')
+    ax.scatter(x, decoded[:, 1], c="tab:red", label="test_2", alpha=0.3, edgecolors='none')
+
+    ax.legend()
+    ax.grid(True)
+
+    plt.show()

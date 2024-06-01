@@ -264,7 +264,7 @@ class BaseModel(nn.Module):
         # predict all y's of the validation set and append the model's accuracy
         # to the list
         for x, y in dataloader:
-            _y = self.predict(x, as_list=False)
+            _y = self.predict(x)
 
             y = y.to(self._device)
             loss = self._loss_fn(_y, y)
@@ -315,7 +315,7 @@ class BaseModel(nn.Module):
         # predict all y's of the validation set and append the model's accuracy
         # to the list
         for x, y in dataloader:
-            _y = self.predict(x, as_list=False)
+            _y = self.predict(x)
 
             y = y.to(self._device)
             loss = self._loss_fn(_y, y)
@@ -349,13 +349,13 @@ class BaseModel(nn.Module):
 
         return accuracy
 
-    def predict(self, x: torch.tensor, as_list: bool = True) -> List:
+    def predict(self, x: torch.tensor, as_array: bool = False) -> List:
         """This method only predicts future steps based on the given curve described by
         the datapoints X.
 
         Args:
             x (torch.tensor): The datapoints.
-            future_steps (int, optional): The amount of steps to look into future. Defaults to 1.
+            as_array (bool, optional): Returns the prediction as np.array. Defaults to False.
 
         Returns:
             List: The prediction.
@@ -363,7 +363,7 @@ class BaseModel(nn.Module):
         x = x.to(self._device)
         with torch.no_grad():
             out = self(x)
-            if as_list:
+            if as_array:
                 out = list(out.cpu().numpy())
 
         return out

@@ -35,4 +35,4 @@ new_instance.load("runs/5-21-2024_203057/model_SimpleModel.torch")
 
 # predict on a trained model using the corresponding method and ask the output
 # to be a list instead of a tensor
-new_instance.predict(data[0], as_list=True)
+new_instance.predict(data[0], as_array=True)
