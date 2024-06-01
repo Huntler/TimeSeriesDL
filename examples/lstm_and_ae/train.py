@@ -8,6 +8,7 @@ from TimeSeriesDL.data import Dataset, encode_dataset
 from TimeSeriesDL.model import ConvAE, LSTM
 from TimeSeriesDL.utils import config
 
+
 def train(path: str) -> BaseModel:
     """Trains based on a given config.
 
@@ -32,7 +33,8 @@ def train(path: str) -> BaseModel:
 
     # train the model on the dataset for 5 epochs and log the progress in a CLI
     # to review the model's training performance, open TensorBoard in a browser
-    model.learn(train=dataloader, epochs=train_args["train_epochs"], verbose=True)
+    model.learn(train=dataloader,
+                epochs=train_args["train_epochs"], verbose=True)
 
     # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
     model.save_to_default()
@@ -43,6 +45,7 @@ def train(path: str) -> BaseModel:
     config.store_args(f"{model.log_path}/config.yml", train_args)
     return model
 
+
 if __name__ == "__main__":
     # train the auto encoder and encode the dataset
     print("Train the ConvAE")
@@ -50,7 +53,8 @@ if __name__ == "__main__":
     print(f"Latent space shape is {ae.latent_space_shape}")
 
     print("\nEncode dataset")
-    encoded: np.array = encode_dataset(config.get_args(ae.log_path + "/config.yml"))
+    encoded: np.array = encode_dataset(
+        config.get_args(ae.log_path + "/config.yml"))
 
     # train the lstm on the encoded dataset, then decode: ae.decode(lstm.predict(x))
     print("\nTrain LSTM")
@@ -81,8 +85,10 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots()
     x = np.linspace(0.5, 3.5, len(decoded[:, 0]))
-    ax.scatter(x, decoded[:, 0], c="tab:blue", label="test_1", alpha=0.3, edgecolors='none')
-    ax.scatter(x, decoded[:, 1], c="tab:red", label="test_2", alpha=0.3, edgecolors='none')
+    ax.scatter(x, decoded[:, 0], c="tab:blue",
+               label="test_1", alpha=0.3, edgecolors='none')
+    ax.scatter(x, decoded[:, 1], c="tab:red",
+               label="test_2", alpha=0.3, edgecolors='none')
 
     ax.legend()
     ax.grid(True)

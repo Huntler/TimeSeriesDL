@@ -57,13 +57,16 @@ class LSTM(BaseModel):
             batch_first=True,
             dtype=self._precision,
         )
-        self._linear_1 = torch.nn.Linear(self._hidden_dim, 64, dtype=self._precision)
+        self._linear_1 = torch.nn.Linear(
+            self._hidden_dim, 64, dtype=self._precision)
 
-        self._linear_2 = torch.nn.Linear(64, self._features, dtype=self._precision)
+        self._linear_2 = torch.nn.Linear(
+            64, self._features, dtype=self._precision)
 
         # define optimizer, loss function and variable learning rate
         self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
+        self._optim = torch.optim.AdamW(
+            self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def forward(self, x):
@@ -84,5 +87,6 @@ class LSTM(BaseModel):
     def load(self, path: str) -> None:
         self.load_state_dict(torch.load(path))
         self.eval()
+
 
 config.register_model("LSTM", LSTM)

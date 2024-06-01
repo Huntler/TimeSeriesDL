@@ -78,18 +78,18 @@ class Dataset(torch.utils.data.Dataset):
         if self._scaler:
             data = np.array(data, dtype=self._precision)
             return self._scaler.inverse_transform(data)
-        
+
         return data
 
     def __len__(self):
         return max(1, len(self._mat) - self._f_seq - self._seq)
 
     def __getitem__(self, index):
-        x = self._mat[index : self._seq + index]
+        x = self._mat[index: self._seq + index]
 
         # the auto encoder requires input = output
         if self._ae_mode:
             return x, x
 
-        y = self._mat[self._seq + index : self._seq + index + self._f_seq]
+        y = self._mat[self._seq + index: self._seq + index + self._f_seq]
         return x, y

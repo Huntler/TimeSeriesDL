@@ -159,7 +159,8 @@ class BaseModel(nn.Module):
             exit(1)
 
         # run for n epochs specified
-        pbar = tqdm(total=epochs * len(train) * train.batch_size, desc=f"Epochs {epochs}", leave=True)
+        pbar = tqdm(total=epochs * len(train) * train.batch_size,
+                    desc=f"Epochs {epochs}", leave=True)
         for e in range(epochs):
             mse_ep_losses = []
             rmse_ep_losses = []
@@ -198,7 +199,8 @@ class BaseModel(nn.Module):
                 # log for the statistics
                 mse_losses = np.mean(mse_losses, axis=0)
                 mse_ep_losses.append(mse_losses)
-                self._writer.add_scalar("Train/loss", loss, self.__sample_position)
+                self._writer.add_scalar(
+                    "Train/loss", loss, self.__sample_position)
 
                 rmse_losses = np.mean(rmse_losses, axis=0)
                 rmse_ep_losses.append(rmse_losses)

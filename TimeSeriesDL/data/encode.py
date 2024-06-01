@@ -10,7 +10,7 @@ from TimeSeriesDL.model.conv_ae_model import ConvAE
 
 def encode_dataset(
     train_args: Dict, export_path: str = "./examples/train_encoded.mat",
-    dataset_class = Dataset
+    dataset_class=Dataset
 ) -> None:
     """Loads a trained ConvAE using the config dictionary.
 

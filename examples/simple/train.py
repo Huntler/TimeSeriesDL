@@ -19,7 +19,8 @@ simple_model.use_device(train_args["device"])
 
 # train the model on the dataset for 5 epochs and log the progress in a CLI
 # to review the model's training performance, open TensorBoard in a browser
-simple_model.learn(train=dataloader, epochs=train_args["train_epochs"], verbose=True)
+simple_model.learn(
+    train=dataloader, epochs=train_args["train_epochs"], verbose=True)
 
 # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
 simple_model.save_to_default()
