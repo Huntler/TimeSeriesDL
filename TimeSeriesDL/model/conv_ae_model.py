@@ -27,7 +27,7 @@ class ConvAE(BaseModel):
         kernel_size: int = 1,
         stride: int = 1,
         padding: int = 0,
-        last_activation: str = "relu",
+        last_activation: str = "sigmoid",
         lr: float = 1e-3,
         lr_decay: float = 9e-1,
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),

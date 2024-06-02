@@ -174,7 +174,7 @@ class BaseModel(nn.Module):
             if self._scheduler:
                 self._scheduler.step()
                 lr = self._scheduler.get_last_lr()[0]
-                self._writer.add_scalar("Train/learning_rate", lr, e)
+                self._writer.add_scalar("Epoch/Train/learning_rate", lr, e)
 
             # log for the statistics
             self._loss_suite.log_epoch(e)

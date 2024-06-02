@@ -1,7 +1,7 @@
 """This module contains a variational auto-encoder based on CNN."""
 
 from datetime import datetime
-from typing import Tuple
+from typing import Any, Tuple
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -29,7 +29,7 @@ class ConvVAE(BaseModel):
         kernel_size: int = 1,
         stride: int = 1,
         padding: int = 0,
-        last_activation: str = "relu",
+        last_activation: str = "sigmoid",
         lr: float = 1e-3,
         lr_decay: float = 9e-1,
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
@@ -64,7 +64,8 @@ class ConvVAE(BaseModel):
         self._last_activation = get_activation_from_string(last_activation)
 
         # check if the latent space will be bigger than the output after the first conv1d layer
-        ef_length = int((sequence_length - kernel_size + 2 * padding) / stride) + 1
+        ef_length = int(
+            (sequence_length - kernel_size + 2 * padding) / stride) + 1
         ls_length = int((ef_length - kernel_size + 2 * padding) / stride) + 1
         if ef_length < ls_length:
             print(
@@ -128,7 +129,8 @@ class ConvVAE(BaseModel):
         self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss(), main=True)
 
         # setup optimizer
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
+        self._optim = torch.optim.AdamW(
+            self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def reparameterization(self, mean: torch.tensor, var: torch.tensor) -> torch.tensor:
@@ -145,11 +147,12 @@ class ConvVAE(BaseModel):
         z = mean + var * epsilon
         return z
 
-    def encode(self, x: torch.tensor) -> Tuple[torch.tensor, torch.tensor]:
+    def encode(self, x: torch.tensor, variance: bool = False) -> Any:
         """Encodes the input.
 
         Args:
             x (torch.tensor): The input.
+            variance (bool): Return variance. Defaults to False.
 
         Returns:
             torch.tensor: The encoded data.
@@ -166,9 +169,12 @@ class ConvVAE(BaseModel):
         batch, features, samples = x.shape
         x = x.view(batch, features * samples)
         mean = self._mean_layer(x).view(batch, features, samples)
-        log_var = self._var_layer(x).view(batch, features, samples)
 
-        return mean, log_var
+        if variance:
+            log_var = self._var_layer(x).view(batch, features, samples)
+            return mean, log_var
+
+        return mean
 
     def decode(self, x: torch.tensor) -> torch.tensor:
         """Decodes the input, should be the same as before encoding the data.
@@ -186,7 +192,8 @@ class ConvVAE(BaseModel):
         )
         x = torch.relu(x)
 
-        x = self._decoder_2.forward(x, [batch, self._features, self._sequence_length])
+        x = self._decoder_2.forward(
+            x, [batch, self._features, self._sequence_length])
 
         # change output to batch, samples, features
         x: torch.tensor = torch.swapaxes(x, 2, 1)
@@ -213,7 +220,7 @@ class ConvVAE(BaseModel):
 
     def forward(self, x: torch.tensor):
         # encode the data to mean/log_var of latent space
-        mean, log_var = self.encode(x)
+        mean, log_var = self.encode(x, variance=True)
 
         # takes exponential function (log var -> var)
         z = self.reparameterization(mean, torch.exp(0.5 * log_var))
