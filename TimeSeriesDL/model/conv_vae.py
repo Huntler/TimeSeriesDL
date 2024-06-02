@@ -9,46 +9,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.utils.activations import get_activation_from_string
 from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.config import config
-from TimeSeriesDL.loss import RMSELoss, ReprLoss
-
-
-def l1(x_tuple: Tuple[torch.tensor], x_hat: torch.tensor) -> torch.tensor:
-    """Wrapper for the L1 loss.
-
-    Args:
-        x_tuple (Tuple): Contains predicted x, mean, and variance.
-        x_hat (torch.Tensor): Expected x.
-
-    Returns:
-        torch.tensor: The L1 loss.
-    """
-    return torch.nn.L1Loss()(x_tuple[0], x_hat)
-
-
-def bce(x_tuple: Tuple[torch.tensor], x_hat: torch.tensor) -> torch.tensor:
-    """Wrapper for the BCE loss.
-
-    Args:
-        x_tuple (Tuple): Contains predicted x, mean, and variance.
-        x_hat (torch.Tensor): Expected x.
-
-    Returns:
-        torch.tensor: The BCE loss.
-    """
-    return torch.nn.BCELoss()(x_tuple[0], x_hat)
-
-
-def rmse(x_tuple: Tuple[torch.tensor], x_hat: torch.tensor) -> torch.tensor:
-    """Wrapper for the RMSE loss.
-
-    Args:
-        x_tuple (Tuple): Contains predicted x, mean, and variance.
-        x_hat (torch.Tensor): Expected x.
-
-    Returns:
-        torch.tensor: The RMSE loss.
-    """
-    return RMSELoss(x_tuple[0], x_hat)
+from TimeSeriesDL.loss import RMSELoss
 
 
 class ConvVAE(BaseModel):
@@ -154,18 +115,17 @@ class ConvVAE(BaseModel):
 
         # setup latent space distribution
         self._mean_layer = nn.Linear(
-            self._enc_2_len, self._enc_2_len, dtype=self._precision
+            self._enc_2_len * self._latent_space, self._enc_2_len * self._latent_space, dtype=self._precision
         )
 
         self._var_layer = nn.Linear(
-            self._enc_2_len, self._enc_2_len, dtype=self._precision
+            self._enc_2_len * self._latent_space, self._enc_2_len * self._latent_space, dtype=self._precision
         )
 
         # setup loss suite
-        self._loss_suite.add_loss_fn("ReprLoss", ReprLoss)
-        self._loss_suite.add_loss_fn("L1", l1, main=True)
-        self._loss_suite.add_loss_fn("RMSE", rmse)
-        self._loss_suite.add_loss_fn("BCE", bce)
+        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
+        self._loss_suite.add_loss_fn("RMSE", RMSELoss)
+        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss(), main=True)
 
         # setup optimizer
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
@@ -198,13 +158,15 @@ class ConvVAE(BaseModel):
         x: torch.tensor = torch.swapaxes(x, 2, 1)
 
         x = self._encoder_1.forward(x)
-        x = torch.nn.LeakyReLU()(x)
+        x = torch.relu(x)
 
         x = self._encoder_2.forward(x)
-        x = torch.nn.LeakyReLU()(x)
+        x = torch.relu(x)
 
-        mean = self._mean_layer(x)
-        log_var = self._var_layer(x)
+        batch, features, samples = x.shape
+        x = x.view(batch, features * samples)
+        mean = self._mean_layer(x).view(batch, features, samples)
+        log_var = self._var_layer(x).view(batch, features, samples)
 
         return mean, log_var
 
@@ -222,7 +184,7 @@ class ConvVAE(BaseModel):
         x = self._decoder_1.forward(
             x, [batch, self._extracted_features, self._enc_1_len]
         )
-        x = torch.nn.LeakyReLU()(x)
+        x = torch.relu(x)
 
         x = self._decoder_2.forward(x, [batch, self._features, self._sequence_length])
 
@@ -257,7 +219,7 @@ class ConvVAE(BaseModel):
         z = self.reparameterization(mean, torch.exp(0.5 * log_var))
 
         # decode data back
-        return self.decode(z), mean, log_var
+        return self.decode(z)
 
     def load(self, path: str) -> None:
         self.load_state_dict(torch.load(path))
