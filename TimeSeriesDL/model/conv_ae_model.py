@@ -111,7 +111,9 @@ class ConvAE(BaseModel):
                 dtype=self._precision,
             )
 
-        self._loss_fn = torch.nn.MSELoss()
+        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
+        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
+
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
@@ -158,13 +160,19 @@ class ConvAE(BaseModel):
         Args:
             unfreeze (bool, optional): Unfreezes the parameter if set to True. Defaults to False.
         """
-        for param in self._encoder.parameters():
-            param.requires_grad = not unfreeze
+        layers = [
+            self._encoder_1.parameters(),
+            self._encoder_2.parameters(),
+            self._mean_layer.parameters(),
+            self._var_layer.parameters(),
+            self._decoder_1.parameters(),
+            self._decoder_2.parameters()]
 
-        for param in self._decoder.parameters():
-            param.requires_grad = not unfreeze
+        for layer in layers:
+            for param in layer:
+                param.requires_grad = not unfreeze
 
-    def forward(self, x: torch.tensor, future_steps: int = 0):
+    def forward(self, x: torch.tensor):
         x = self.encode(x)
         return self.decode(x)
 

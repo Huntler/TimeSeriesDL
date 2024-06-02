@@ -101,7 +101,9 @@ class ConvLSTM(BaseModel):
             self._linear_1.weight = torch.nn.init.zeros_(self._linear_1.weight)
             self._linear_2.weight = torch.nn.init.zeros_(self._linear_2.weight)
 
-        self._loss_fn = torch.nn.MSELoss()
+        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss())
+        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
+
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
