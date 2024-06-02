@@ -111,7 +111,8 @@ class ConvAE(BaseModel):
                 dtype=self._precision,
             )
 
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
+        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss(), main=True)
+        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss())
         self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
 
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
