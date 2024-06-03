@@ -128,6 +128,15 @@ class ConvAE(BaseModel):
         """
         return self._enc_2_len
 
+    @property
+    def precision(self) -> torch.dtype:
+        """The precision required by the model.
+
+        Returns:
+            torch.dtype: The model's precision.
+        """
+        return self._precision
+
     def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         """Encodes the input.
 
@@ -162,6 +171,7 @@ class ConvAE(BaseModel):
         """
         batch, _, _ = x.shape
 
+        #print(x.shape, [batch, self._extracted_features, self._enc_1_len], [self._enc_2_len])
         x = self._decoder_1.forward(
             x, [batch, self._extracted_features, self._enc_1_len])
         x = torch.relu(x)
