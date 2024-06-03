@@ -6,12 +6,12 @@ import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
+from TimeSeriesDL.model.auto_encoder import AutoEncoder
 from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.config import config
 
 
-class ConvAE(BaseModel):
+class ConvAE(AutoEncoder):
     """This model uses CNN to auto-encode time-series.
 
     Args:
@@ -121,32 +121,13 @@ class ConvAE(BaseModel):
 
     @property
     def latent_length(self) -> int:
-        """Sample length of the latent space.
-
-        Returns:
-            int: Length of the latent space.
-        """
         return self._enc_2_len
 
     @property
     def precision(self) -> torch.dtype:
-        """The precision required by the model.
-
-        Returns:
-            torch.dtype: The model's precision.
-        """
         return self._precision
 
     def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
-        """Encodes the input.
-
-        Args:
-            x (torch.tensor): The input.
-            as_array (bool): Retuns the encoded value as np.array. Defaults to False.
-
-        Returns:
-            torch.tensor: The encoded data.
-        """
         # change input to batch, features, samples
         x: torch.tensor = torch.swapaxes(x, 2, 1)
         x = self._encoder_1.forward(x)
@@ -160,15 +141,6 @@ class ConvAE(BaseModel):
         return x
 
     def decode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
-        """Decodes the input, should be the same as before encoding the data.
-
-        Args:
-            x (torch.tensor): The input.
-            as_array (bool): Retuns the encoded value as np.array. Defaults to False.
-
-        Returns:
-            torch.tensor: The decoded data.
-        """
         batch, _, _ = x.shape
 
         #print(x.shape, [batch, self._extracted_features, self._enc_1_len], [self._enc_2_len])

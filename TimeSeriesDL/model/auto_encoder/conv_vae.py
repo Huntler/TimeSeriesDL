@@ -6,13 +6,13 @@ import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
+from TimeSeriesDL.model.auto_encoder.base import AutoEncoder
 from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.config import config
 from TimeSeriesDL.loss import RMSELoss
 
 
-class ConvVAE(BaseModel):
+class ConvVAE(AutoEncoder):
     """This model uses a variational auto-encoder (VAE) based on Convolutional
     layers to auto-encode time-series.
 
@@ -133,6 +133,10 @@ class ConvVAE(BaseModel):
             self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
+    @property
+    def latent_length(self) -> int:
+        return self._enc_2_len
+
     def reparameterization(self, mean: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Samples from the latent representation, which is a random distribution in this case.
 
@@ -148,15 +152,6 @@ class ConvVAE(BaseModel):
         return z
 
     def encode(self, x: torch.tensor, variance: bool = False) -> Any:
-        """Encodes the input.
-
-        Args:
-            x (torch.tensor): The input.
-            variance (bool): Return variance. Defaults to False.
-
-        Returns:
-            torch.tensor: The encoded data.
-        """
         # change input to batch, features, samples
         x: torch.tensor = torch.swapaxes(x, 2, 1)
 
@@ -177,14 +172,6 @@ class ConvVAE(BaseModel):
         return mean
 
     def decode(self, x: torch.tensor) -> torch.tensor:
-        """Decodes the input, should be the same as before encoding the data.
-
-        Args:
-            x (torch.tensor): The input.
-
-        Returns:
-            torch.tensor: The decoded data.
-        """
         batch, _, _ = x.shape
 
         x = self._decoder_1.forward(

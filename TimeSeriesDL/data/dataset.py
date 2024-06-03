@@ -117,6 +117,7 @@ class Dataset(torch.utils.data.Dataset):
             data = np.array(data, dtype=self._precision)
             return self._scaler.inverse_transform(data)
 
+        print("Warning, no scaler defined.")
         return data
 
     def slice(self, start: int, end: int, index: int | np.ndarray = None) -> np.array:

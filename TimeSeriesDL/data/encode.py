@@ -5,7 +5,7 @@ from scipy.io import savemat
 import torch
 import numpy as np
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.model.conv_ae_model import ConvAE
+from TimeSeriesDL.model.auto_encoder.conv_ae_model import ConvAE
 
 
 def encode_dataset(

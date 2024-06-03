@@ -1,36 +1,32 @@
 """Encodes a dataset and stores it."""
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 from tqdm import tqdm
 from scipy.io import savemat
 import torch
 import numpy as np
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.model.auto_encoder import AutoEncoder
 from TimeSeriesDL.utils import config
 
 
-def check_model_type(train_args: Dict) -> bool:
-    """Checks if the model described in the provided dictionary is trained and type AE.
+def check_model_type(ae: AutoEncoder) -> bool:
+    """Checks if the model described in the provided model is type AE.
 
     Args:
-        train_args (Dict): The dictionary.
+        ae (AutoEncoder): The model.
 
     Returns:
-        bool: True if trained and auto-encoder, else False.
+        bool: True if auto-encoder, else False.
     """
     # check if the model to load is trained and type AE
-    if "AE" not in train_args["model_name"]:
-        print("To encode a dataset, an AE model is required.")
-        return False
+    if isinstance(ae, AutoEncoder):
+        return True
 
-    if not train_args["model_path"]:
-        print("The AE model needs to be trained first.")
-        return False
-
-    return True
+    print("To encode a dataset, an AE model is required.")
+    return False
 
 
-def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, BaseModel]:
+def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, AutoEncoder]:
     """Loads the dataset and AE using the dictionary.
 
     Args:
@@ -40,8 +36,8 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, BaseModel]:
     Returns:
         Tuple[Dataset, ConvAE]: Loaded Dataset and ConvAE model.
     """
-    # check if the model to load is trained and type AE
-    if not check_model_type(train_args):
+    if not train_args["model_path"]:
+        print("The AE model needs to be trained first.")
         exit(1)
 
     # load the AE and prevent logging
@@ -50,6 +46,10 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, BaseModel]:
     ae = config.get_model(model_name)(**train_args["model"])
     ae.load(path=train_args["model_path"])
 
+    # check if the model to load is trained and type AE
+    if not check_model_type(ae):
+        exit(1)
+
     # load the dataset which should be encoded, make sure to disable AE mode
     train_args["dataset"]["ae_mode"] = False
 
@@ -57,7 +57,6 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, BaseModel]:
         train_args["dataset"]["sequence_length"] = ae.latent_length
 
     data = Dataset(**train_args["dataset"])
-
     return data, ae
 
 
@@ -97,12 +96,16 @@ def encode_dataset(
     return encoded
 
 
-def decode_dataset(train_args: Dict, export_path: str = "./examples/train_decoded.mat") -> None:
+def decode_dataset(
+        train_args: Dict,
+        scaler: Callable,
+        export_path: str = "./examples/train_decoded.mat") -> None:
     """Loads a trained ConvAE using the config dictionary. Then decodes the
     dataset specified in the dictionary and stores it to 'export_path'.
 
     Args:
         train_args (Dict): The config of a trained ConvAE.
+        scaler (Callable): The scaleback function of the original dataset.
         export_path (str): The path of the decoded dataset.
     """
     data, ae = load(train_args, decode=True)
@@ -118,8 +121,8 @@ def decode_dataset(train_args: Dict, export_path: str = "./examples/train_decode
 
         # encode the data and unwrap the batch
         x = ae.decode(x)
-        x = list(x.cpu().detach().numpy()[0, :, :])
-        decoded += x
+        x = scaler(list(x.cpu().detach().numpy()[0, :, :]))
+        decoded += list(x)
 
     # save the encoded dataset
     decoded = np.array(decoded)
