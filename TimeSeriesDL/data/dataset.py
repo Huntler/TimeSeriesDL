@@ -75,8 +75,11 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: Data scaled to input range.
         """
-        data = np.array(data, dtype=self._precision)
-        return self._scaler.inverse_transform(data)
+        if self._scaler:
+            data = np.array(data, dtype=self._precision)
+            return self._scaler.inverse_transform(data)
+        
+        return data
 
     def __len__(self):
         return max(1, len(self._mat) - self._f_seq - self._seq)
