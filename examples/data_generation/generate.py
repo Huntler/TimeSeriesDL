@@ -23,7 +23,7 @@ x, y1 = functions.test_1(size=samples)
 x, y2 = functions.test_2(size=samples)
 
 # store the dataset
-savemat(path, {"train": [y1, y2]})
+savemat(path, {"train_1": y1, "train_2": y2})
 
 # show the dataset
 if args.visualize:
