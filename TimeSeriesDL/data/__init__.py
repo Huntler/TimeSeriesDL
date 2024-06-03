@@ -1,3 +1,3 @@
 """Module loads dataset classes."""
 from .dataset import Dataset
-from .encode import encode_dataset
+from .transcode import encode_dataset, decode_dataset
