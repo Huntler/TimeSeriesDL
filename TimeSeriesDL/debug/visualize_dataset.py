@@ -148,23 +148,3 @@ class VisualizeDataset:
         if save:
             plt.savefig(save)
         plt.show()
-
-if __name__ == "__main__":
-    _dataset = Dataset(custom_path="examples/train.mat")
-    vis = VisualizeDataset(_dataset, name="Train")
-
-    # test one feature, overwrite label name
-    vis.set_feature(0, "Test")
-    vis.visualize()
-
-    # test two features, use label names of dataset
-    vis.set_feature([0, 1])
-    vis.visualize()
-
-    # test save, but only after 60_000 samples
-    vis.visualize(60_000, save="test.png")
-
-    # test overlaying another (here the same) dataset
-    second = VisualizeDataset(_dataset, name="Predicted", overlay_mode=True)
-    vis.set_overlay(second)
-    vis.visualize()
