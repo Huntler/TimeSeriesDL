@@ -1,6 +1,7 @@
 """This module contains the Dataset loader."""
 
-from typing import List, Tuple
+import re
+from typing import Dict, List, Tuple
 from sklearn.preprocessing import MinMaxScaler
 import scipy.io
 import torch
@@ -37,7 +38,7 @@ class Dataset(torch.utils.data.Dataset):
         # load the dataset specified
         self._d_type = d_type
         self._file = custom_path if custom_path else f"./data/{self._d_type}.mat"
-        self._mat = self.load_data()
+        self._mat, self._labels = self.load_data()
         print("Dataset shape:", self._mat.shape)
 
         # normalize the dataset between values of o to 1
@@ -47,15 +48,52 @@ class Dataset(torch.utils.data.Dataset):
             self._scaler = self._scaler.fit(self._mat)
             self._mat = self._scaler.transform(self._mat)
 
-    def load_data(self) -> np.array:
+    @property
+    def label_names(self) -> List[str]:
+        """Returns the list of label names corresponding to the data loaded.
+
+        Returns:
+            List[str]: The list of label names.
+        """
+        return self._labels
+
+    @property
+    def d_type(self) -> str:
+        """Returns the d_type (=name) of the dataset.
+
+        Returns:
+            str: The d_type of the dataset.
+        """
+        return self._d_type
+
+    def load_data(self) -> Tuple[np.array, List[str]]:
         """Loads the dataset from the path self._file which is generated as './data/{d_type}.mat'.
 
         Returns:
-            np.array: The dataset.
+            Tuple[np.array, List[str]]: The dataset and labels.
         """
-        mat: np.array = scipy.io.loadmat(self._file).get(f"{self._d_type}")
+        labels = []
+        mat = []
+        for label, data in scipy.io.loadmat(self._file).items():
+            # skip entries which are not labels
+            if re.search("__\\w*__", label):
+                continue
+
+            labels.append(label)
+            mat.append(data[0, :])
+
+        mat: np.array = np.array(mat)
         mat = np.swapaxes(mat, 0, 1)
-        return mat.astype(self._precision)
+        return mat.astype(self._precision), labels
+
+    @property
+    def shape(self) -> Tuple[int]:
+        """Returns the shape of the dataset.
+
+        Returns:
+            Tuple[int]: The dataset's shape as tuple of ints.
+        """
+        return self._mat.shape
 
     @property
     def sample_size(self) -> int:
@@ -78,8 +116,23 @@ class Dataset(torch.utils.data.Dataset):
         if self._scaler:
             data = np.array(data, dtype=self._precision)
             return self._scaler.inverse_transform(data)
-        
+
         return data
+
+    def slice(self, start: int, end: int, index: int | np.ndarray = None) -> np.array:
+        """Slices the dataset.
+
+        Args:
+            start (int): Start index of slice.
+            end (int): End index of slice.
+            index (int | np.array): The index where to slice.
+
+        Returns:
+            np.array: The sliced array.
+        """
+        if isinstance(index, np.ndarray) or isinstance(index, int):
+            return self._mat[start:end, index]
+        return self._mat[start:end, :]
 
     def __len__(self):
         return max(1, len(self._mat) - self._f_seq - self._seq)
