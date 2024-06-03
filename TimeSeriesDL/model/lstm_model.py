@@ -64,9 +64,10 @@ class LSTM(BaseModel):
             64, self._features, dtype=self._precision)
 
         # define optimizer, loss function and variable learning rate
-        self._loss_fn = torch.nn.MSELoss()
-        self._optim = torch.optim.AdamW(
-            self.parameters(), lr=lr, betas=adam_betas)
+        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss())
+        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
+
+        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def forward(self, x):

@@ -6,25 +6,12 @@ from typing import List
 import numpy as np
 import torch
 from torch import nn
-from torch.nn import Module
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-
-
-def rmse_loss_fn(yhat, y):
-    """Calculates the RMSE loss sqrt(mean(y_hat - y)**2)
-
-    Args:
-        yhat (torch.tensor): Predicted value.
-        y (torch.tensor): Actual value.
-
-    Returns:
-        torch.tensor: Loss.
-    """
-    return torch.sqrt(torch.mean((yhat - y) ** 2))
+from TimeSeriesDL.loss import LossMeasurementSuite
 
 
 class BaseModel(nn.Module):
@@ -59,12 +46,10 @@ class BaseModel(nn.Module):
         self._precision = torch.float32
 
         # define object which where defined by children of this class
+        self._loss_suite = LossMeasurementSuite(self._writer)
         self._scheduler: _LRScheduler = None
         self._optim: Optimizer = None
-        self._loss_fn: Module = torch.nn.MSELoss()
 
-        self._l1_loss = nn.L1Loss()
-        self._rmse_loss = rmse_loss_fn
         self.test_stats = None
 
     @property
@@ -122,7 +107,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError()
 
-    def forward(self, x, future_steps: int = 1):
+    def forward(self, x):
         """
         This method performs the forward call on the neural network
         architecture.
@@ -138,9 +123,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(
-        self, train, validate=None, test=None, epochs: int = 1, verbose: bool = False
-    ):
+    def learn(self, train, validate=None, test=None, epochs: int = 1):
         """Trains the model on a dataset. Valdiation- and Testdatasets can be set as well.
 
         Args:
@@ -148,71 +131,42 @@ class BaseModel(nn.Module):
             validate (Dataset, optional): Validate model on this dataset. Defaults to None.
             test (Dataset, optional): Test model on this dataset. Defaults to None.
             epochs (int, optional): Run training for given amount of epochs. Defaults to 1.
-            verbose (bool, optional): Show progress on CLI. Defaults to False.
         """
         # set the model into training mode
         self.train()
 
         # check if the dataset is wrapped within a Dataloader
         if not isinstance(train, DataLoader):
-            print("Please provide the dataset wrapped in a torch DataLoader")
+            print("Please provide the dataset wrapped in a torch DataLoader.")
             exit(1)
 
         # run for n epochs specified
-        pbar = tqdm(total=epochs * len(train) * train.batch_size,
-                    desc=f"Epochs {epochs}", leave=True)
+        pbar = tqdm(
+            total=epochs * len(train) * train.batch_size,
+            desc=f"Epochs {epochs}",
+            leave=True,
+        )
         for e in range(epochs):
-            mse_ep_losses = []
-            rmse_ep_losses = []
-            mae_ep_losses = []
-
             # run for each batch in training set
-            for x, y in train:
-                mse_losses = []
-                rmse_losses = []
-                mae_losses = []
-
+            for x, y_hat in train:
                 x = x.to(self._device)
-                y = y.to(self._device)
+                y_hat = y_hat.to(self._device)
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
-                pred_y = self(x)
+                y = self(x)
 
                 # calculate the gradient using backpropagation of the loss
-                loss = self._loss_fn(pred_y, y)
-
-                # calculate rmse and mae losses as well
-                rmse_loss = self._rmse_loss(pred_y, y)
-                mae_loss = self._l1_loss(y, pred_y)
+                loss, losses = self._loss_suite.calulate(y, y_hat, self.__sample_position)
 
                 # reset the gradient and run backpropagation
                 self._optim.zero_grad()
                 loss.backward()
                 self._optim.step()
-                # print(y.detach().numpy(), pred_y.ravel().detach().numpy(), loss.item())
-
-                mse_losses.append(loss.item())
-                rmse_losses.append(rmse_loss.item())
-                mae_losses.append(mae_loss.item())
 
                 # log for the statistics
-                mse_losses = np.mean(mse_losses, axis=0)
-                mse_ep_losses.append(mse_losses)
-                self._writer.add_scalar(
-                    "Train/loss", loss, self.__sample_position)
+                self._loss_suite.add_epoch_data(losses)
 
-                rmse_losses = np.mean(rmse_losses, axis=0)
-                rmse_ep_losses.append(rmse_losses)
-                self._writer.add_scalar(
-                    "Train/rmse_loss", rmse_loss, self.__sample_position
-                )
-
-                mae_losses = np.mean(mae_losses, axis=0)
-                mae_ep_losses.append(mae_losses)
-                self._writer.add_scalar(
-                    "Train/mae_loss", mae_loss, self.__sample_position
-                )
                 self.__sample_position += x.size(0)
                 pbar.update(train.batch_size)
 
@@ -220,17 +174,10 @@ class BaseModel(nn.Module):
             if self._scheduler:
                 self._scheduler.step()
                 lr = self._scheduler.get_last_lr()[0]
-                self._writer.add_scalar("Train/learning_rate", lr, e)
+                self._writer.add_scalar("Epoch/Train/learning_rate", lr, e)
 
             # log for the statistics
-            mse_ep_losses = np.mean(mse_ep_losses)
-            self._writer.add_scalar("Train/epoch_loss", mse_ep_losses, e)
-
-            rmse_ep_losses = np.mean(rmse_ep_losses)
-            self._writer.add_scalar("Train/rmse_epoch_loss", rmse_ep_losses, e)
-
-            mae_ep_losses = np.mean(mae_ep_losses)
-            self._writer.add_scalar("Train/mae_epoch_loss", mae_ep_losses, e)
+            self._loss_suite.log_epoch(e)
 
             # runn a validation of the current model state
             if validate:
@@ -241,41 +188,36 @@ class BaseModel(nn.Module):
 
             if test:
                 self.eval()
-                _ = self.test(test, e)
+                _ = self.validate(test, e, "Test")
                 self.train()
 
         self.eval()
         self._writer.flush()
 
-    def validate(self, dataloader, log_step: int = -1) -> float:
-        """Method validates model's accuracy based on the given data. In validation, the model
-        only looks one step ahead.
+    def validate(self, loader: DataLoader, epoch: int, tag: str = "Validate") -> float:
+        """This method validates/tests the model on a different dataset and logs 
+        losses/accuracies to the tensorboard.
 
         Args:
-            dataloader (_type_): The dataloader which contains value, not used for training.
-            log_step (int, optional): The step of the logger, can be disabled by setting to -1.
+            loader (DataLoader): The dataset to validate/test on.
+            epoch (int): The epoch in which the model is validated/tested.
+            tag (str, optional): The tag describing which values are logged. 
+            Defaults to "Validate".
 
         Returns:
-            float: The model's accuracy.
+            float: The models accuracy on the given dataset.
         """
         accuracies = []
-        mse_losses = []
-        rmse_losses = []
-        mae_losses = []
+        self._loss_suite.set_tag(tag)
 
         # predict all y's of the validation set and append the model's accuracy
         # to the list
-        for x, y in dataloader:
-            _y = self.predict(x)
+        for x, y_hat in loader:
+            y = self.predict(x, as_list=False)
+            y_hat = y_hat.to(self._device)
 
-            y = y.to(self._device)
-            loss = self._loss_fn(_y, y)
-            rmse_loss = self._rmse_loss(_y, y)
-            mae_loss = self._l1_loss(_y, y)
-
-            mse_losses.append(loss.item())
-            rmse_losses.append(rmse_loss.item())
-            mae_losses.append(mae_loss.item())
+            loss, data = self._loss_suite.calulate(y, y_hat)
+            self._loss_suite.add_epoch_data(data)
 
             accuracies.append(1 - loss.item())
 
@@ -283,71 +225,11 @@ class BaseModel(nn.Module):
         accuracy = np.mean(np.array(accuracies))
         variance = np.mean(np.var(np.array(accuracies)))
 
-        mse_loss = np.mean(np.array(mse_losses))
-        rmse_loss = np.mean(np.array(rmse_losses))
-        mae_loss = np.mean(np.array(mae_losses))
+        self._loss_suite.log_epoch(epoch)
 
         # log to the tensorboard if wanted
-        if log_step != -1:
-            self._writer.add_scalar("Val/accuracy_mean", accuracy, log_step)
-            self._writer.add_scalar("Val/accuracy_var", variance, log_step)
-
-            self._writer.add_scalar("Val/mse_loss", mse_loss, log_step)
-            self._writer.add_scalar("Val/rmse_loss", rmse_loss, log_step)
-            self._writer.add_scalar("Val/mae_loss", mae_loss, log_step)
-
-        return accuracy
-
-    def test(self, dataloader, log_step: int = -1) -> float:
-        """Method validates model's accuracy based on the given data. In validation, the model
-        only looks one step ahead.
-
-        Args:
-            dataloader (_type_): The dataloader which contains value, not used for training.
-            log_step (int, optional): The step of the logger, can be disabled by setting to -1.
-
-        Returns:
-            float: The model's accuracy.
-        """
-        accuracies = []
-        mse_losses = []
-        rmse_losses = []
-        mae_losses = []
-
-        # predict all y's of the validation set and append the model's accuracy
-        # to the list
-        for x, y in dataloader:
-            _y = self.predict(x)
-
-            y = y.to(self._device)
-            loss = self._loss_fn(_y, y)
-            rmse_loss = self._rmse_loss(_y, y)
-            mae_loss = self._l1_loss(_y, y)
-
-            mse_losses.append(loss.item())
-            rmse_losses.append(rmse_loss.item())
-            mae_losses.append(mae_loss.item())
-
-            accuracies.append(1 - loss.item())
-
-        # calculate some statistics based on the data collected
-        accuracy = np.mean(np.array(accuracies))
-        variance = np.mean(np.var(np.array(accuracies)))
-
-        mse_loss = np.mean(np.array(mse_losses))
-        rmse_loss = np.mean(np.array(rmse_losses))
-        mae_loss = np.mean(np.array(mae_losses))
-
-        self.test_stats = (accuracy, variance, mse_loss, rmse_loss, mae_loss)
-
-        # log to the tensorboard if wanted
-        if log_step != -1:
-            self._writer.add_scalar("Test/accuracy_mean", accuracy, log_step)
-            self._writer.add_scalar("Test/accuracy_var", variance, log_step)
-
-            self._writer.add_scalar("Test/mse_loss", mse_loss, log_step)
-            self._writer.add_scalar("Test/rmse_loss", rmse_loss, log_step)
-            self._writer.add_scalar("Test/mae_loss", mae_loss, log_step)
+        self._writer.add_scalar(f"{tag}/accuracy_mean", accuracy, epoch)
+        self._writer.add_scalar(f"{tag}/accuracy_var", variance, epoch)
 
         return accuracy
 
@@ -366,6 +248,6 @@ class BaseModel(nn.Module):
         with torch.no_grad():
             out = self(x)
             if as_array:
-                out = list(out.cpu().numpy())
+                out = out.cpu().numpy()
 
         return out
