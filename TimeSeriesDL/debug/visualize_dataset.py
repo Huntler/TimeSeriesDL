@@ -129,7 +129,6 @@ class VisualizeDataset:
 
         # slice the dataset as required to view start/end/selected features
         data = self._dataset.slice(start, end, self._feature)
-        x = np.linspace(start, end, data.shape[0])
 
         plt_index = len(self._feature) * 100 + 10
         for i in self._feature:
@@ -138,11 +137,13 @@ class VisualizeDataset:
 
             # visualize the data
             for c in range(data.shape[1]):
+                x = np.linspace(start, end, data.shape[0])
                 plt.plot(x, data[:, c, i], label=self.name)
                 plt.ylabel(self._label[i])
 
                 # add the overlay
                 if self._overlay:
+                    x = np.linspace(start, end, _overlay_data.shape[0])
                     plt.plot(x, _overlay_data[:, c, i], label=self._overlay.name)
 
             plt.legend(loc="upper left")

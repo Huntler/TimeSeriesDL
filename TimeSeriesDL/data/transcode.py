@@ -73,7 +73,7 @@ def encode_dataset(
     data, ae = load(train_args)
 
     encoded = []
-    for i in tqdm(range(0, data.sample_size, train_args["dataset"]["sequence_length"])):
+    for i in tqdm(range(0, len(data), train_args["dataset"]["sequence_length"])):
         # get the data as tensor
         x, _ = data[i]
         x = torch.unsqueeze(torch.tensor(x, dtype=ae.precision), 0)
@@ -111,7 +111,7 @@ def decode_dataset(
     data, ae = load(train_args, decode=True)
 
     decoded = []
-    for i in tqdm(range(0, data.sample_size, ae.latent_length)):
+    for i in tqdm(range(0, len(data), ae.latent_length)):
         # get the data as tensor, apply 0-padding as sequence might be to small
         x = np.zeros((1, ae.latent_length, 1, data.shape[-1]))
         d, _ = data[i]

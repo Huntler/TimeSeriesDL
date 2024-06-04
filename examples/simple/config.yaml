@@ -1,20 +1,21 @@
 dataset:
   d_type: train
-  sequence_length: 4096
+  sequence_length: 2500
   custom_path: ./examples/train.mat
 dataloader:
-  batch_size: 128
+  batch_size: 64
   shuffle: True
 model_name: ConvLSTM
 model_path: None
 model:
-  xavier_init: False
-  input_size: 2
-  latent_size: 8
-  kernel_size: 129
-  stride: 32
+  sequence_length: 2500
+  features: 2
+  latent_size: 16
+  kernel_size: 25
+  stride: 10
+  padding: 0
   lstm_layers: 4
   hidden_dim: 32
 precision: float32
-train_epochs: 5
+train_epochs: 15
 device: mps

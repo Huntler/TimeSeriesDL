@@ -1,11 +1,7 @@
 """This module contains a basic auto-encoder based on CNN."""
-
-from datetime import datetime
 from typing import Tuple
-import numpy as np
 import torch
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
 from TimeSeriesDL.utils.activations import get_activation_from_string
@@ -23,6 +19,7 @@ class ConvAE(AutoEncoder):
         self,
         features: int = 1,
         sequence_length: int = 1,
+        channels: int = 1,
         extracted_features: int = 1,
         latent_size: int = 1,
         kernel_size: int = 1,
@@ -36,17 +33,7 @@ class ConvAE(AutoEncoder):
         log: bool = True,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        # if logging enalbed, then create a tensorboard writer, otherwise prevent the
-        # parent class to create a standard writer
-        if log:
-            now = datetime.now()
-            self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-            self._tb_path = f"runs/{tag}/AE/{self._tb_sub}"
-            self._writer = SummaryWriter(self._tb_path)
-        else:
-            self._writer = False
-
-        super().__init__(self._writer)
+        super().__init__("ConvAE", tag, log)
 
         # data parameter
         self._features = features
@@ -54,6 +41,7 @@ class ConvAE(AutoEncoder):
         self._sequence_length = sequence_length
 
         # cnn parameter
+        self._channels = channels
         self._kernel_size = kernel_size
         self._stride = stride
         self._padding = padding
@@ -77,7 +65,7 @@ class ConvAE(AutoEncoder):
 
         # setup the encoder based on CNN
         self._encoder_1 = nn.Conv2d(
-            1,
+            self._channels,
             self._extracted_features,
             (self._features, self._kernel_size),
             self._stride,
@@ -88,7 +76,7 @@ class ConvAE(AutoEncoder):
         self._encoder_2 = nn.Conv2d(
             self._extracted_features,
             self._latent_space,
-            (1, self._kernel_size),
+            (self._channels, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
@@ -98,7 +86,7 @@ class ConvAE(AutoEncoder):
         self._decoder_1 = nn.ConvTranspose2d(
             self._latent_space,
             self._extracted_features,
-            (1, self._kernel_size),
+            (self._channels, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
@@ -106,7 +94,7 @@ class ConvAE(AutoEncoder):
 
         self._decoder_2 = nn.ConvTranspose2d(
             self._extracted_features,
-            1,
+            self._channels,
             (self._features, self._kernel_size),
             self._stride,
             self._padding,
@@ -129,9 +117,10 @@ class ConvAE(AutoEncoder):
         return self._precision
 
     def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
-        # change input to batch, features, samples
-        x: torch.tensor = torch.swapaxes(x, 1, 3)
-        x: torch.tensor = torch.swapaxes(x, 2, 1)
+        # change input to batch, channels, features, samples
+        x: torch.tensor = torch.swapaxes(x, 1, 3) # batch, feature, channel, sample
+        x: torch.tensor = torch.swapaxes(x, 2, 1) # batch, channel, feature sample
+
         x = self._encoder_1.forward(x)
         x = torch.relu(x)
 
@@ -145,17 +134,17 @@ class ConvAE(AutoEncoder):
     def decode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         batch, _, _, _ = x.shape
 
-        #print(x.shape, [batch, self._extracted_features, self._enc_1_len], [self._enc_2_len])
-        x = self._decoder_1.forward(
-            x, [batch, self._extracted_features, 1, self._enc_1_len])
+        output_size = [batch, self._extracted_features, self._channels, self._enc_1_len]
+        x = self._decoder_1.forward(x, output_size)
         x = torch.relu(x)
-        x = self._decoder_2.forward(
-            x, [batch, 1, self._features, self._sequence_length])
 
-        # change output to batch, samples, features
-        x: torch.tensor = torch.swapaxes(x, 2, 1)
-        x: torch.tensor = torch.swapaxes(x, 1, 3)
+        output_size = [batch, self._channels, self._features, self._sequence_length]
+        x = self._decoder_2.forward(x, output_size)
         x = self._last_activation(x)
+
+        # change output to batch, samples, channel, features
+        x: torch.tensor = torch.swapaxes(x, 2, 1) # batch, feature, channel, sample
+        x: torch.tensor = torch.swapaxes(x, 1, 3) # batch, sample, channel, feature
 
         if as_array:
             return x.cpu().detach().numpy()
@@ -170,8 +159,6 @@ class ConvAE(AutoEncoder):
         layers = [
             self._encoder_1.parameters(),
             self._encoder_2.parameters(),
-            self._mean_layer.parameters(),
-            self._var_layer.parameters(),
             self._decoder_1.parameters(),
             self._decoder_2.parameters()]
 

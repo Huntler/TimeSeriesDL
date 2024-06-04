@@ -1,9 +1,6 @@
 """This module contains a straightfowrad LSTM model."""
-
-from datetime import datetime
 from typing import Tuple
 import torch
-from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.activations import get_activation_from_string
@@ -25,18 +22,8 @@ class LSTM(BaseModel):
         tag: str = "",
         precision: torch.dtype = torch.float32
     ) -> None:
-        # if logging enalbed, then create a tensorboard writer, otherwise prevent the
-        # parent class to create a standard writer
-        if log:
-            now = datetime.now()
-            self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-            self._tb_path = f"runs/{tag}/LSTM/{self._tb_sub}"
-            self._writer = SummaryWriter(self._tb_path)
-        else:
-            self._writer = False
-
         # initialize components using the parent class
-        super(LSTM, self).__init__(self._writer)
+        super(LSTM, self).__init__("LSTM", tag, log)
 
         # LSTM hyperparameters
         self._hidden_dim = hidden_dim

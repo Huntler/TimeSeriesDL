@@ -2,17 +2,14 @@
 
 from datetime import datetime
 from typing import Tuple
-import numpy as np
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.lr_scheduler import ExponentialLR
-from TimeSeriesDL.model.auto_encoder.base import AutoEncoder
-from TimeSeriesDL.utils.activations import get_activation_from_string
+from TimeSeriesDL.model import ConvAE
 from TimeSeriesDL.utils.config import config
 
 
-class ConvVAE(AutoEncoder):
+class ConvVAE(ConvAE):
     """This model uses a variational auto-encoder (VAE) based on Convolutional
     layers to auto-encode time-series.
 
@@ -24,6 +21,7 @@ class ConvVAE(AutoEncoder):
         self,
         features: int = 1,
         sequence_length: int = 1,
+        channels: int = 1,
         extracted_features: int = 1,
         latent_size: int = 1,
         kernel_size: int = 1,
@@ -37,83 +35,9 @@ class ConvVAE(AutoEncoder):
         log: bool = True,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        # if logging enalbed, then create a tensorboard writer, otherwise prevent the
-        # parent class to create a standard writer
-        if log:
-            now = datetime.now()
-            self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-            self._tb_path = f"runs/{tag}/VAE/{self._tb_sub}"
-            self._writer = SummaryWriter(self._tb_path)
-        else:
-            self._writer = False
-
-        super().__init__(self._writer)
-
-        # data parameter
-        self._features = features
-        self._extracted_features = extracted_features
-        self._sequence_length = sequence_length
-
-        # cnn parameter
-        self._kernel_size = kernel_size
-        self._stride = stride
-        self._padding = padding
-        self._precision = precision
-
-        self._latent_space = latent_size
-        self._last_activation = get_activation_from_string(last_activation)
-
-        # check if the latent space will be bigger than the output after the first conv1d layer
-        ef_length = int(
-            (sequence_length - kernel_size + 2 * padding) / stride) + 1
-        ls_length = int((ef_length - kernel_size + 2 * padding) / stride) + 1
-        if ef_length < ls_length:
-            print(
-                "Warning: Output after first encoder layer is smaller than latent "
-                + f"space. {ef_length} < {ls_length}"
-            )
-
-        self._enc_1_len = ef_length
-        self._enc_2_len = ls_length
-
-        # setup the encoder based on CNN
-        self._encoder_1 = nn.Conv1d(
-            self._features,
-            self._extracted_features,
-            self._kernel_size,
-            self._stride,
-            self._padding,
-            dtype=self._precision,
-        )
-
-        self._encoder_2 = nn.Conv1d(
-            self._extracted_features,
-            self._latent_space,
-            self._kernel_size,
-            self._stride,
-            self._padding,
-            dtype=self._precision,
-        )
-
-        # setup decoder
-        self._decoder_1 = nn.ConvTranspose1d(
-            self._latent_space,
-            self._extracted_features,
-            self._kernel_size,
-            self._stride,
-            self._padding,
-            dtype=self._precision,
-        )
-
-        self._decoder_2 = nn.ConvTranspose1d(
-            self._extracted_features,
-            self._features,
-            self._kernel_size,
-            self._stride,
-            self._padding,
-            dtype=self._precision,
-        )
-
+        super().__init__(features, sequence_length, channels, extracted_features, latent_size,
+                         kernel_size, stride, padding, last_activation, lr, lr_decay,
+                         adam_betas, tag, log, precision)
         # setup latent space distribution
         self._mean_layer = nn.Linear(
             self._enc_2_len * self._latent_space,
@@ -125,19 +49,14 @@ class ConvVAE(AutoEncoder):
             self._enc_2_len * self._latent_space, dtype=self._precision
         )
 
-        # setup loss suite
-        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
-        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss())
+    def _init_writer(self, name, tag, log) -> None:
+        if not log:
+            return
 
-        # setup optimizer
-        self._optim = torch.optim.AdamW(
-            self.parameters(), lr=lr, betas=adam_betas)
-        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
-
-    @property
-    def latent_length(self) -> int:
-        return self._enc_2_len
+        now = datetime.now()
+        self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
+        self._tb_path = f"runs/{tag}/VAE/{self._tb_sub}"
+        self._writer = SummaryWriter(self._tb_path)
 
     def reparameterization(self, mean: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Samples from the latent representation, which is a random distribution in this case.
@@ -153,7 +72,7 @@ class ConvVAE(AutoEncoder):
         z = mean + var * epsilon
         return z
 
-    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor | np.ndarray:
+    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         # change input to batch, features, samples
         x, _ = self._encode(x)
 
@@ -162,8 +81,9 @@ class ConvVAE(AutoEncoder):
         return x
 
     def _encode(self, x: torch.tensor) -> Tuple[torch.tensor, torch.tensor]:
-        # change input to batch, features, samples
-        x: torch.tensor = torch.swapaxes(x, 2, 1)
+        # change input to batch, channels, features, samples
+        x: torch.tensor = torch.swapaxes(x, 1, 3) # batch, feature, channel, sample
+        x: torch.tensor = torch.swapaxes(x, 2, 1) # batch, channel, feature sample
 
         x = self._encoder_1.forward(x)
         x = torch.relu(x)
@@ -171,29 +91,12 @@ class ConvVAE(AutoEncoder):
         x = self._encoder_2.forward(x)
         x = torch.relu(x)
 
-        batch, features, samples = x.shape
-        x = x.view(batch, features * samples)
-        mean = self._mean_layer(x).view(batch, features, samples)
-        log_var = self._var_layer(x).view(batch, features, samples)
+        # change input to batch, features + samples * channels for Linear layer
+        batch, channels, features, samples = x.shape
+        x = x.view(batch, features * samples * channels)
+        mean = self._mean_layer(x).view(batch, channels, features, samples)
+        log_var = self._var_layer(x).view(batch, channels, features, samples)
         return mean, log_var
-
-    def decode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
-        batch, _, _ = x.shape
-
-        output_size = [batch, self._extracted_features, self._enc_1_len]
-        x = self._decoder_1.forward(x, output_size)
-        x = torch.relu(x)
-
-        output_size = [batch, self._features, self._sequence_length]
-        x = self._decoder_2.forward(x, output_size)
-
-        # change output to batch, samples, features
-        x: torch.tensor = torch.swapaxes(x, 2, 1)
-        x = self._last_activation(x)
-
-        if as_array:
-            return x.detach().cpu().numpy()
-        return x
 
     def freeze(self, unfreeze: bool = False) -> None:
         """Freezes or unfreezes the parameter of this AE to enable or disable parameter tuning.
@@ -201,13 +104,11 @@ class ConvVAE(AutoEncoder):
         Args:
             unfreeze (bool, optional): Unfreezes the parameter if set to True. Defaults to False.
         """
+        super().freeze(unfreeze)
+
         layers = [
-            self._encoder_1.parameters(),
-            self._encoder_2.parameters(),
             self._mean_layer.parameters(),
             self._var_layer.parameters(),
-            self._decoder_1.parameters(),
-            self._decoder_2.parameters(),
         ]
 
         for layer in layers:

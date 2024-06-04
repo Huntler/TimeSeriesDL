@@ -1,5 +1,4 @@
 """This module defines the interface for an auto-encoder."""
-import numpy as np
 import torch
 from TimeSeriesDL.model.base_model import BaseModel
 

@@ -39,7 +39,6 @@ class Dataset(torch.utils.data.Dataset):
         self._d_type = d_type
         self._file = custom_path if custom_path else f"./data/{self._d_type}.mat"
         self._mat, self._labels = self.load_data()
-        print("Dataset shape:", self._mat.shape)
 
         # normalize the dataset between values of o to 1
         self._scaler = None
@@ -51,6 +50,10 @@ class Dataset(torch.utils.data.Dataset):
         # add a dimension to have one channel per feature/sample
         if len(self._mat.shape) != 3:
             self._mat = np.expand_dims(self._mat, 1)
+
+        assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
+        assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
+        print("Dataset shape:", self._mat.shape)
 
     @property
     def label_names(self) -> List[str]:
@@ -126,7 +129,7 @@ class Dataset(torch.utils.data.Dataset):
         return data
 
     def slice(self, start: int, end: int, index: int | np.ndarray = None) -> np.array:
-        """Slices the dataset.
+        """Slices the dataset along the samples axis.
 
         Args:
             start (int): Start index of slice.
@@ -141,14 +144,15 @@ class Dataset(torch.utils.data.Dataset):
         return self._mat[start:end, :, :]
 
     def __len__(self):
-        return max(1, len(self._mat) - self._f_seq - self._seq)
+        return max(0, self.sample_size - self._f_seq - self._seq) + 1
 
     def __getitem__(self, index):
-        x = self._mat[index: self._seq + index]
+        assert 0 <= index < len(self), f"Invalid index {index}"
+        x = self._mat[index: self._seq + index, :, :]
 
         # the auto encoder requires input = output
         if self._ae_mode:
             return x, x
 
-        y = self._mat[self._seq + index: self._seq + index + self._f_seq]
+        y = self._mat[self._seq + index: self._seq + index + self._f_seq, :, :]
         return x, y
