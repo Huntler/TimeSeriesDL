@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Tuple
+import numpy as np
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -112,8 +113,8 @@ class ConvAE(AutoEncoder):
             dtype=self._precision,
         )
 
-        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss(), main=True)
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss())
+        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss())
+        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
         self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
 
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
@@ -127,7 +128,7 @@ class ConvAE(AutoEncoder):
     def precision(self) -> torch.dtype:
         return self._precision
 
-    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
+    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor | np.ndarray:
         # change input to batch, features, samples
         x: torch.tensor = torch.swapaxes(x, 2, 1)
         x = self._encoder_1.forward(x)
