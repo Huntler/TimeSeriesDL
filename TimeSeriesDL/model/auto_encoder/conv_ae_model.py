@@ -76,38 +76,38 @@ class ConvAE(AutoEncoder):
         self._enc_2_len = ls_length
 
         # setup the encoder based on CNN
-        self._encoder_1 = nn.Conv1d(
-            self._features,
+        self._encoder_1 = nn.Conv2d(
+            1,
             self._extracted_features,
-            self._kernel_size,
+            (self._features, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
         )
 
-        self._encoder_2 = nn.Conv1d(
+        self._encoder_2 = nn.Conv2d(
             self._extracted_features,
             self._latent_space,
-            self._kernel_size,
+            (1, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
         )
 
         # setup decoder
-        self._decoder_1 = nn.ConvTranspose1d(
+        self._decoder_1 = nn.ConvTranspose2d(
             self._latent_space,
             self._extracted_features,
-            self._kernel_size,
+            (1, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
         )
 
-        self._decoder_2 = nn.ConvTranspose1d(
+        self._decoder_2 = nn.ConvTranspose2d(
             self._extracted_features,
-            self._features,
-            self._kernel_size,
+            1,
+            (self._features, self._kernel_size),
             self._stride,
             self._padding,
             dtype=self._precision,
@@ -128,8 +128,9 @@ class ConvAE(AutoEncoder):
     def precision(self) -> torch.dtype:
         return self._precision
 
-    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor | np.ndarray:
+    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         # change input to batch, features, samples
+        x: torch.tensor = torch.swapaxes(x, 1, 3)
         x: torch.tensor = torch.swapaxes(x, 2, 1)
         x = self._encoder_1.forward(x)
         x = torch.relu(x)
@@ -142,17 +143,18 @@ class ConvAE(AutoEncoder):
         return x
 
     def decode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
-        batch, _, _ = x.shape
+        batch, _, _, _ = x.shape
 
         #print(x.shape, [batch, self._extracted_features, self._enc_1_len], [self._enc_2_len])
         x = self._decoder_1.forward(
-            x, [batch, self._extracted_features, self._enc_1_len])
+            x, [batch, self._extracted_features, 1, self._enc_1_len])
         x = torch.relu(x)
         x = self._decoder_2.forward(
-            x, [batch, self._features, self._sequence_length])
+            x, [batch, 1, self._features, self._sequence_length])
 
         # change output to batch, samples, features
         x: torch.tensor = torch.swapaxes(x, 2, 1)
+        x: torch.tensor = torch.swapaxes(x, 1, 3)
         x = self._last_activation(x)
 
         if as_array:

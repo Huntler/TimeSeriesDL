@@ -33,7 +33,7 @@ class AutoEncoder(BaseModel):
         """
         raise NotImplementedError
 
-    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor | np.ndarray:
+    def encode(self, x: torch.tensor, as_array: bool = False) -> torch.tensor:
         """Encodes the input.
 
         Args:
@@ -41,7 +41,7 @@ class AutoEncoder(BaseModel):
             as_array (bool): Retuns the encoded value as np.array. Defaults to False.
 
         Returns:
-            torch.tensor | np.ndarray: The encoded output as tensor if as_array is set to False.
+            torch.tensor: The encoded output as tensor if as_array is set to False.
         """
         raise NotImplementedError
 
