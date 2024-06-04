@@ -37,7 +37,7 @@ class VisualizeDataset:
         """
         self._dataset = dataset
         self._name = name if name else self._dataset.d_type
-        assert len(self._dataset.shape) == 2, "Expected dataset to have two dimensions."
+        assert len(self._dataset.shape) == 3, "Expected dataset to have two dimensions."
 
         self._overlay: VisualizeDataset = None
         self._overlay_mode = overlay_mode
@@ -93,7 +93,7 @@ class VisualizeDataset:
             Defaults to None.
         """
         assert not self._overlay_mode, "The overlay uses the same features as the main plot."
-        feature = _transform_feature(feature, self._dataset.shape[1])
+        feature = _transform_feature(feature, self._dataset.shape[-1])
 
         if isinstance(label, str):
             label = [label]
@@ -137,12 +137,13 @@ class VisualizeDataset:
             plt.subplot(plt_index)
 
             # visualize the data
-            plt.plot(x, data[:, i], label=self.name)
-            plt.ylabel(self._label[i])
+            for c in range(data.shape[1]):
+                plt.plot(x, data[:, c, i], label=self.name)
+                plt.ylabel(self._label[i])
 
-            # add the overlay
-            if self._overlay:
-                plt.plot(x, _overlay_data[:, i], label=self._overlay.name)
+                # add the overlay
+                if self._overlay:
+                    plt.plot(x, _overlay_data[:, c, i], label=self._overlay.name)
 
             plt.legend(loc="upper left")
         if save:

@@ -79,9 +79,9 @@ def encode_dataset(
         x = torch.unsqueeze(torch.tensor(x, dtype=ae.precision), 0)
 
         # encode the data and unwrap the batch
-        x = ae.encode(x)
-        x = torch.transpose(x, 2, 1)
-        x = list(x.cpu().detach().numpy()[0, :, :])
+        x = ae.encode(x, as_array=True)
+        x = np.swapaxes(x[:, :, 0, :], 2, 1)
+        x = list(x[0, :, :])
         encoded += x
 
     # save the encoded dataset
@@ -113,15 +113,15 @@ def decode_dataset(
     decoded = []
     for i in tqdm(range(0, data.sample_size, ae.latent_length)):
         # get the data as tensor, apply 0-padding as sequence might be to small
-        x = np.zeros((1, ae.latent_length, data.shape[-1]))
+        x = np.zeros((1, ae.latent_length, 1, data.shape[-1]))
         d, _ = data[i]
-        x[0, :d.shape[0], :] = d
+        x[0, :, :d.shape[0], :] = d
+        x = np.swapaxes(x, 1, 3)
         x = torch.tensor(x, dtype=ae.precision)
-        x = torch.transpose(x, 2, 1)
 
         # encode the data and unwrap the batch
         x = ae.decode(x)
-        x = scaler(list(x.cpu().detach().numpy()[0, :, :]))
+        x = scaler(list(x.cpu().detach().numpy()[0, :, 0, :]))
         decoded += list(x)
 
     # save the encoded dataset

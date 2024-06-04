@@ -48,6 +48,10 @@ class Dataset(torch.utils.data.Dataset):
             self._scaler = self._scaler.fit(self._mat)
             self._mat = self._scaler.transform(self._mat)
 
+        # add a dimension to have one channel per feature/sample
+        if len(self._mat.shape) != 3:
+            self._mat = np.expand_dims(self._mat, 1)
+
     @property
     def label_names(self) -> List[str]:
         """Returns the list of label names corresponding to the data loaded.
@@ -82,6 +86,7 @@ class Dataset(torch.utils.data.Dataset):
             labels.append(label)
             mat.append(data[0, :])
 
+        # swap axes to have feature, samples
         mat: np.array = np.array(mat)
         mat = np.swapaxes(mat, 0, 1)
         return mat.astype(self._precision), labels
@@ -132,8 +137,8 @@ class Dataset(torch.utils.data.Dataset):
             np.array: The sliced array.
         """
         if isinstance(index, np.ndarray) or isinstance(index, int):
-            return self._mat[start:end, index]
-        return self._mat[start:end, :]
+            return self._mat[start:end, :, index]
+        return self._mat[start:end, :, :]
 
     def __len__(self):
         return max(1, len(self._mat) - self._f_seq - self._seq)
