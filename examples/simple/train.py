@@ -37,16 +37,17 @@ from tqdm import trange
 
 # create storage of prediction
 window_len = train_args["dataset"]["sequence_length"]
+f_len = train_args["dataset"]["future_steps"]
 full_sequence = np.zeros(data.shape)
 full_sequence[0:window_len, :] = data.slice(0, window_len)
 
 # predict based on sliding window
-for i in trange(0, data.sample_size - window_len):
+for i in trange(0, data.sample_size - window_len, f_len):
     window = full_sequence[i:i + window_len]
     window = torch.tensor(window, device=train_args["device"], dtype=torch.float32)
     window = torch.unsqueeze(window, 0)
     sample = model.predict(window)
-    full_sequence[i + window_len] = sample.detach().cpu().numpy()
+    full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
 
 # remove the channel and prepare to save the predicted data
 full_sequence = np.squeeze(full_sequence, 1)

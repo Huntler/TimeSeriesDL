@@ -20,6 +20,7 @@ class ConvLSTM(BaseModel):
         self,
         features: int = 1,
         sequence_length: int = 1,
+        future_steps: int = 1,
         latent_size: int = 1,
         hidden_dim: int = 64,
         kernel_size: int = 15,
@@ -51,6 +52,7 @@ class ConvLSTM(BaseModel):
         self._hidden_dim = hidden_dim
         self._lstm_layers = lstm_layers
         self._precision = precision
+        self._future_steps = future_steps
 
         # lstm1, linear, cnn are all layers in the network
         # create the layers and initilize them based on our hyperparameters
@@ -71,8 +73,8 @@ class ConvLSTM(BaseModel):
             dtype=self._precision,
         )
 
-        self._linear_1 = torch.nn.Linear(self._hidden_dim, 64, dtype=self._precision)
-        self._linear_2 = torch.nn.Linear(64, self._features, dtype=self._precision)
+        self._linear_1 = torch.nn.Linear(self._hidden_dim, self._latent_size, dtype=self._precision)
+        self._linear_2 = torch.nn.Linear(self._latent_size, self._features, dtype=self._precision)
 
         self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
         self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
@@ -122,10 +124,15 @@ class ConvLSTM(BaseModel):
         x = torch.relu(x)
 
         # the last values are our predection ahead
-        x = x[:, -1:, :]
+        x = x[:, -self._future_steps:, :]
 
-        # finalize the prediction
-        x = self._reduction_network(x)
+        # reduce the LSTM's output to match it's input
+        x = self._linear_1(x)
+        x = torch.relu(x)
+
+        # reduce the size further to match the original input size
+        x = self._linear_2(x)
+        x = self._last_activation(x)
 
         # add the single channel again to ensure correct loss calculation
         return torch.unsqueeze(x, 2)
