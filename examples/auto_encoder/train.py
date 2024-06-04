@@ -6,7 +6,7 @@ from TimeSeriesDL.data import Dataset, encode_dataset, decode_dataset
 from TimeSeriesDL.utils import config
 
 # load training arguments (equals example/simple_model.py)
-train_args = config.get_args("./examples/simple/config.yaml")
+train_args = config.get_args("./examples/auto_encoder/config.yaml")
 
 # create a dataset loader which loads a matplotlib matrix from ./train.mat
 data = Dataset(**train_args["dataset"])
@@ -31,10 +31,11 @@ train_args["model_path"] = ae_model.log_path + "/model.torch"
 config.store_args(f"{ae_model.log_path}/config.yml", train_args)
 
 # use the trained AE to encode -> decode a dataset...
-encode_dataset(train_args)
-train_args["dataset"]["custom_path"] = "examples/train_encoded.mat"
-decode_dataset(train_args, data.scale_back)
-decoded = Dataset(custom_path="examples/train_decoded.mat")
+encode_dataset(train_args, export_path="examples/auto_encoder/train_encoded.mat")
+train_args["dataset"]["custom_path"] = "examples/auto_encoder/train_encoded.mat"
+
+decode_dataset(train_args, data.scale_back, export_path="examples/auto_encoder/train_decoded.mat")
+decoded = Dataset(custom_path="examples/auto_encoder/train_decoded.mat")
 
 # ...and visualize the decoded dataset against the input
 input_vis = VisualizeDataset(data, name="Input")
@@ -43,3 +44,4 @@ output_vis = VisualizeDataset(decoded, name="Predicted", overlay_mode=True)
 input_vis.set_feature([0, 1])
 input_vis.set_overlay(output_vis)
 input_vis.visualize()
+input_vis.visualize(save="examples/auto_encoder/train_transcoded_comparison.png")

@@ -53,7 +53,7 @@ class ConvAE(AutoEncoder):
         # check if the latent space will be bigger than the output after the first conv1d layer
         ef_length = int(
             (sequence_length - kernel_size + 2 * padding) / stride) + 1
-        ls_length = int((ef_length - kernel_size + 2 * padding) / stride) + 1
+        ls_length = int((ef_length - kernel_size//2 + 2 * padding) / stride) + 1
         if ef_length < ls_length:
             print(
                 "Warning: Output after first encoder layer is smaller than latent "
@@ -76,7 +76,7 @@ class ConvAE(AutoEncoder):
         self._encoder_2 = nn.Conv2d(
             self._extracted_features,
             self._latent_space,
-            (self._channels, self._kernel_size),
+            (self._channels, self._kernel_size//2),
             self._stride,
             self._padding,
             dtype=self._precision,
@@ -86,7 +86,7 @@ class ConvAE(AutoEncoder):
         self._decoder_1 = nn.ConvTranspose2d(
             self._latent_space,
             self._extracted_features,
-            (self._channels, self._kernel_size),
+            (self._channels, self._kernel_size//2),
             self._stride,
             self._padding,
             dtype=self._precision,
