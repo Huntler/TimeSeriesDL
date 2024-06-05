@@ -21,4 +21,4 @@ model:
   save_every: 5
 precision: float32
 train_epochs: 50
-device: cuda
+device: mps

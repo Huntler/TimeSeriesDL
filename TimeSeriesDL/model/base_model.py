@@ -164,9 +164,9 @@ class BaseModel(nn.Module):
         self.train()
 
         # check if the dataset is wrapped within a Dataloader
-        assert (
-            isinstance(train, DataLoader)
-            ), "Please provide the dataset wrapped in a torch DataLoader."
+        assert isinstance(
+            train, DataLoader
+        ), "Please provide the dataset wrapped in a torch DataLoader."
 
         # run for n epochs specified
         pbar = tqdm(
@@ -185,7 +185,9 @@ class BaseModel(nn.Module):
                 y = self(x)
 
                 # calculate the gradient using backpropagation of the loss
-                loss, losses = self._loss_suite.calulate(y, y_hat, self.__sample_position)
+                loss, losses = self._loss_suite.calulate(
+                    y, y_hat, self.__sample_position
+                )
 
                 # reset the gradient and run backpropagation
                 self._optim.zero_grad()
@@ -224,16 +226,20 @@ class BaseModel(nn.Module):
                 self.save_to_default()
 
         self.eval()
+        sample = np.expand_dims(train.dataset[0][0], axis=0)
+        self._writer.add_graph(
+            self, torch.tensor(sample, dtype=self._precision, device=self._device)
+        )
         self._writer.flush()
 
     def validate(self, loader: DataLoader, epoch: int, tag: str = "Validate") -> float:
-        """This method validates/tests the model on a different dataset and logs 
+        """This method validates/tests the model on a different dataset and logs
         losses/accuracies to the tensorboard.
 
         Args:
             loader (DataLoader): The dataset to validate/test on.
             epoch (int): The epoch in which the model is validated/tested.
-            tag (str, optional): The tag describing which values are logged. 
+            tag (str, optional): The tag describing which values are logged.
             Defaults to "Validate".
 
         Returns:
