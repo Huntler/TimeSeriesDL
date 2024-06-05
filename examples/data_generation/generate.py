@@ -1,5 +1,6 @@
 """This module generates a dataset using functions from the function's module."""
 import argparse
+import numpy as np
 from scipy.io import savemat
 import matplotlib.pyplot as plt
 import functions
@@ -7,7 +8,8 @@ import functions
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--samples", help="Number of samples to generate")
 parser.add_argument("-p", "--path", help="Path to store the dataset (default: examples/train.mat)")
-parser.add_argument("-v", "--visualize", help="Visualize function", action="store_true")
+parser.add_argument("--visualize", help="Visualize function", action="store_true")
+parser.add_argument("-v", "--version", help="The dataset version to generate.")
 args = parser.parse_args()
 
 # check important arguments
@@ -16,22 +18,74 @@ if not args.samples:
     exit(1)
 
 path = args.path if args.path else"examples/train.mat"
-
-# generate the dataset
 samples = int(args.samples)
-x, y1 = functions.test_1(size=samples)
-x, y2 = functions.test_2(size=samples)
+version = int(args.version) if args.version else 0
 
-# store the dataset
-savemat(path, {"train_1": y1, "train_2": y2})
+d = {}
+if version == 0:
+    # generate the dataset
+    x, y1 = functions.test_1(size=samples)
+    x, y2 = functions.test_2(size=samples)
+
+    # store the dataset
+    d = {"train_1": y1, "train_2": y2}
+    savemat(path, d)
+
+elif version == 1:
+    # Generate a sequence of x values
+    x = np.linspace(0, 10, samples)
+
+    # Calculate y values for each function
+    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5)
+    y2 = np.exp(y1)
+    y3 = np.sin(y1*2)
+    y4 = np.sin(np.exp(x/2))
+    y5 = np.log(x + 1)
+
+    d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
+    savemat(path, d)
+
+elif version == 2:
+    # same as version 1 but shifted by x=2
+    # Generate a sequence of x values
+    x = np.linspace(2, 12, samples)
+
+    # Calculate y values for each function
+    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5)
+    y2 = np.exp(y1)
+    y3 = np.sin(y1*2)
+    y4 = np.sin(np.exp(x/2))
+    y5 = np.log(x + 1)
+
+    d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
+    savemat(path, d)
+
+elif version == 3:
+    # same as version 1 but shifted by x=2 and y*0.9
+    # Generate a sequence of x values
+    x = np.linspace(1, 11, samples)
+
+    # Calculate y values for each function
+    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5) * 0.9
+    y2 = np.exp(y1) * 0.9
+    y3 = np.sin(y1*2) * 0.9
+    y4 = np.sin(np.exp(x/2)) * 0.9
+    y5 = np.log(x + 1) * 0.9
+
+    d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
+    savemat(path, d)
 
 # show the dataset
 if args.visualize:
-    fig, ax = plt.subplots()
-    ax.scatter(x, y1, c="tab:blue", label="test_1", alpha=0.3, edgecolors='none')
-    ax.scatter(x, y2, c="tab:red", label="test_2", alpha=0.3, edgecolors='none')
+    # Create a figure for plotting
+    plt.figure(figsize=(14, 8))
 
-    ax.legend()
-    ax.grid(True)
+    # Plot each function by iterating over the dictionary
+    for i, (key, value) in enumerate(d.items(), start=1):
+        plt.subplot(3, 2, i)  # Create a subplot in a 3x2 grid
+        plt.plot(x, value, label=key)
+        plt.legend()
 
+    # Adjust the layout and display the plot
+    plt.tight_layout()
     plt.show()
