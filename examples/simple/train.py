@@ -68,4 +68,4 @@ output_vis = VisualizeDataset(predicted, name="Predicted", overlay_mode=True)
 
 input_vis.set_feature([0, 1])
 input_vis.set_overlay(output_vis)
-input_vis.visualize(save="examples/simple/comparioson.png")
+input_vis.visualize(save="examples/simple/comparison.png")
