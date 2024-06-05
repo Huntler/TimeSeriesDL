@@ -81,7 +81,7 @@ class Dataset(torch.utils.data.Dataset):
         """
         labels = []
         mat = []
-        for label, data in scipy.io.loadmat(self._file).items():
+        for label, data in sorted(scipy.io.loadmat(self._file).items()):
             # skip entries which are not labels
             if re.search("__\\w*__", label):
                 continue

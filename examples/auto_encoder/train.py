@@ -34,7 +34,8 @@ config.store_args(f"{ae_model.log_path}/config.yml", train_args)
 encode_dataset(train_args, export_path="examples/auto_encoder/train_encoded.mat")
 train_args["dataset"]["custom_path"] = "examples/auto_encoder/train_encoded.mat"
 
-decode_dataset(train_args, data.scale_back, export_path="examples/auto_encoder/train_decoded.mat")
+decode_dataset(train_args, data.scale_back, labels=data.label_names,
+               export_path="examples/auto_encoder/train_decoded.mat")
 decoded = Dataset(custom_path="examples/auto_encoder/train_decoded.mat")
 
 # ...and visualize the decoded dataset against the input

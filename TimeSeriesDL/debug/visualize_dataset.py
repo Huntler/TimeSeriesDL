@@ -1,5 +1,6 @@
 """This module visualizes a dataset's data."""
-from typing import List
+import math
+from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from TimeSeriesDL.data.dataset import Dataset
@@ -33,7 +34,8 @@ class VisualizeDataset:
             dataset (Dataset): The dataset to be visualized. Requires the base functionality of the
             TimeSeriesDL's dataset class.
             name (str, optional): The name of the dataset. Defaults to the dataset file name.
-            overlay_mode (bool, optional): This object should be used as an overlay. Defaults to False.
+            overlay_mode (bool, optional): This object should be used as an overlay.
+            Defaults to False.
         """
         self._dataset = dataset
         self._name = name if name else self._dataset.d_type
@@ -105,16 +107,30 @@ class VisualizeDataset:
         self._feature = feature
         self._label = label
 
-    def visualize(self, start: int = 0, end: int = -1, save: str = None) -> None:
+    def _get_grid(self, max_h, num_features) -> Tuple[int, int]:
+        sqrt = math.sqrt(num_features)
+        if sqrt * sqrt == num_features and num_features <= max_h:
+            return int(sqrt), int(sqrt)
+        elif num_features <= max_h:
+            return num_features, 1
+
+        h, w = max_h, math.ceil(num_features / max_h)
+        if (h * w - num_features) % w == 0:
+            return h - (h * w - num_features) // 2, w
+        return h, w
+
+    def visualize(self, start: int = 0, end: int = -1, size: int = 3, save: str = None) -> None:
         """Visualizes the selected features of the dataset and the overlay if set.
 
         Args:
             start (int, optional): Start index of plot. Defaults to 0.
             end (int, optional): End index of plot. Defaults to -1.
+            size (int, optional): Size of the plots. Defaults to 3.
             save (str, optional): Save path. Defaults to None and prevents saving.
         """
         assert self._feature is not None, \
             "No feature to visualize defined. Did you call 'set_feature()'?"
+        assert not self._overlay_mode, "The overlay should not call visualize."
 
         if end == -1:
             end = self._dataset.shape[0]
@@ -124,29 +140,41 @@ class VisualizeDataset:
         _overlay_data = None
         if self._overlay:
             _overlay_data = self._overlay.dataset.slice(start, end, self._feature)
-        else:
-            plt.figure(1)
 
         # slice the dataset as required to view start/end/selected features
         data = self._dataset.slice(start, end, self._feature)
 
-        plt_index = len(self._feature) * 100 + 10
-        for i in self._feature:
-            plt_index += 1
-            plt.subplot(plt_index)
+        # setup graph and layout
+        grid = self._get_grid(4, len(self._feature))
+        figsize = (grid[1] * size * 2, grid[0] * size)
+        fig, axs = plt.subplots(grid[0], grid[1], figsize=figsize, sharex=True, squeeze=False)
+        fig.tight_layout(pad=2.0)
 
-            # visualize the data
-            for c in range(data.shape[1]):
-                x = np.linspace(start, end, data.shape[0])
-                plt.plot(x, data[:, c, i], label=self.name)
-                plt.ylabel(self._label[i])
+        # iterate over the graph's layout
+        i = 0
+        for plt_x in range(grid[0]):
+            for plt_y in range(grid[1]):
+                # visualize the data
+                for c in range(data.shape[1]):
+                    x = np.linspace(start, end, data.shape[0])
+                    line, = axs[plt_x, plt_y].plot(x, data[:, c, i])
+                    axs[plt_x, plt_y].set_ylabel(self._label[i])
+                    if i == 0:
+                        line.set_label(self.name)
 
-                # add the overlay
-                if self._overlay:
-                    x = np.linspace(start, end, _overlay_data.shape[0])
-                    plt.plot(x, _overlay_data[:, c, i], label=self._overlay.name)
+                    # add the overlay
+                    if self._overlay:
+                        x = np.linspace(start, end, _overlay_data.shape[0])
+                        line, = axs[plt_x, plt_y].plot(x, _overlay_data[:, c, i])
+                        if i == 0:
+                            line.set_label(self._overlay.name)
+                i += 1
+                if i == len(self._feature):
+                    break
+            if i == len(self._feature):
+                break
 
-            plt.legend(loc="upper left")
+            fig.legend()
         if save:
-            plt.savefig(save)
+            fig.savefig(save)
         plt.show()

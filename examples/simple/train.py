@@ -54,9 +54,9 @@ full_sequence = np.squeeze(full_sequence, 1)
 full_sequence = data.scale_back(full_sequence)
 full_sequence = np.swapaxes(full_sequence, 0, 1)
 
-# save prediction
+# save prediction using the label names from the original dataset
 export = {}
-for i in range(full_sequence.shape[0]):
+for i, label_name in enumerate(data.label_names):
     export[f"pred_feature_{i}"] = list(full_sequence[i, :])
 savemat("examples/simple/prediction.mat", export)
 

@@ -1,5 +1,5 @@
 """Encodes a dataset and stores it."""
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, List, Tuple
 from tqdm import tqdm
 from scipy.io import savemat
 import torch
@@ -99,6 +99,7 @@ def encode_dataset(
 def decode_dataset(
         train_args: Dict,
         scaler: Callable,
+        labels: List[str] = None,
         export_path: str = "./examples/train_decoded.mat") -> None:
     """Loads a trained ConvAE using the config dictionary. Then decodes the
     dataset specified in the dictionary and stores it to 'export_path'.
@@ -106,6 +107,7 @@ def decode_dataset(
     Args:
         train_args (Dict): The config of a trained ConvAE.
         scaler (Callable): The scaleback function of the original dataset.
+        labels (List[str]): Original labels for each feature. Defaults to None.
         export_path (str): The path of the decoded dataset.
     """
     data, ae = load(train_args, decode=True)
@@ -128,9 +130,12 @@ def decode_dataset(
     decoded = np.array(decoded)
     decoded = np.swapaxes(decoded, 0, 1)
 
+    if not labels:
+        labels = [f"decoded_{i}" for i in range(decoded.shape[0])]
+
     export = {}
     for i in range(decoded.shape[0]):
-        export[f"decoded_{i}"] = list(decoded[i, :])
+        export[labels[i]] = list(decoded[i, :])
     savemat(export_path, export)
 
     return decoded
