@@ -8,6 +8,20 @@ from TimeSeriesDL.data.dataset import Dataset
 
 
 def _transform_feature(feature: int | List[int], max_f: int) -> np.array:
+    """This function transforms a feature or a list of features into a NumPy array,
+    ensuring that the input is valid and compatible with the dataset. It also ensures
+    that each feature index is within the bounds of the total number of features in
+    the dataset.
+
+    Args:
+        feature (int | List[int]): an integer or a list of integers representing the
+        feature(s) to be transformed.
+        max_f (int): an integer representing the maximum index of the features in the
+        dataset.
+
+    Returns:
+        np.array: A NumPy array containing the input feature(s).
+    """
     # make sure the feature is type of list
     if isinstance(feature, int):
         feature = [feature]
@@ -75,16 +89,23 @@ class VisualizeDataset:
         return self._overlay_mode
 
     def set_overlay(self, overlay: "VisualizeDataset") -> None:
-        """Sets an overlay to this object, which gets plotted in the same 
-        graph as self. Setting an overlay to an overly is not permitted. An overlay requires
-        the 'overlay_mode' parameter during initialization.
+        """Sets an overlay to this visualized dataset, which will be plotted in the
+        same graph. This method can only be called on a normal object (i.e., not an
+        overlay itself). If you try to set an overlay to another overlay, this method 
+        will raise an assertion error. 
+        
+        To use this method, the object being passed as the `overlay` parameter must 
+        be an instance of `VisualizeDataset` and must have been initialized with the 
+        `overlay_mode` parameter.
 
         Args:
-            overlay (VisualizeDataset): The object to overlay.
+            overlay (VisualizeDataset): The object to overlay on top of this visualized dataset.
         """
         assert not self._overlay_mode, "Can not set an overlay to an overlay."
-        assert overlay.is_overlay, "Expected overlay to be an overlay, got normal object."
+        assert isinstance(overlay, VisualizeDataset), "Expected overlay to be an instance of VisualizeDataset"
+        assert getattr(overlay, 'is_overlay', False), "Expected overlay to have 'is_overlay' set to True"
         self._overlay = overlay
+
 
     def set_feature(self, feature: int | List[int], label: str | List[str] = None) -> None:
         """Selects one or multiple features to be shown on the graph.

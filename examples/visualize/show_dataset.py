@@ -1,7 +1,6 @@
 """This example shows how to visualize a dataset"""
-from TimeSeriesDL.data.dataset import Dataset
-from TimeSeriesDL.debug.visualize_dataset import VisualizeDataset
-
+from TimeSeriesDL.data import Dataset
+from TimeSeriesDL.debug import VisualizeDataset
 
 _dataset = Dataset(custom_path="examples/train.mat")
 vis = VisualizeDataset(_dataset, name="Train")
