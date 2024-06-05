@@ -85,6 +85,15 @@ class BaseModel(nn.Module):
         """
         return self._tb_path
 
+    @property
+    def device(self) -> str:
+        """Returns the device, the model uses.
+
+        Returns:
+        str: The device as string.
+        """
+        return self._device
+
     def use_device(self, device: str) -> None:
         """Sets the current device to run the model on. e.g. 'cpu', 'cuda', 'mps'.
 
@@ -121,7 +130,9 @@ class BaseModel(nn.Module):
             post_fix (str | int): Adds a postfix to the model path. Defaults to None.‚
         """
         params = self.state_dict()
-        post_fix = f"_{post_fix}" if post_fix else ""
+        post_fix = f"_{post_fix}" if post_fix is not None else ""
+        if not os.path.exists(f"{self._tb_path}/models/"):
+            os.mkdir(f"{self._tb_path}/models/")
         torch.save(params, f"{self._tb_path}/models/model{post_fix}.torch")
 
     def load(self, path: str) -> None:
@@ -222,8 +233,8 @@ class BaseModel(nn.Module):
                 self.train()
 
             # save the model after every n epochs
-            if self._save_every > 0 and e % self._save_every == 0:
-                self.save_to_default()
+            if self._save_every > 0 and (e + 1) % self._save_every == 0:
+                self.save_to_default(e + 1)
 
         self.eval()
         sample = np.expand_dims(train.dataset[0][0], axis=0)
