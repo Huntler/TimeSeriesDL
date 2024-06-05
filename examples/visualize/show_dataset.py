@@ -16,7 +16,7 @@ vis.set_feature([0, 1])
 vis.visualize(start=60_000, end=80_000)
 
 # test save last configuration but of all samples
-vis.visualize(save="examples/train_mat.png")
+vis.visualize(save="examples/visualize/train.png")
 
 # test overlaying another (here the same) dataset
 second = VisualizeDataset(_dataset, name="Predicted", overlay_mode=True)

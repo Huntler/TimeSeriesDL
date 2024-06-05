@@ -2,7 +2,7 @@
 from typing import Callable, List, Tuple
 import numpy as np
 import torch
-from TimeSeriesDL.model.conv_ae_model import ConvAE
+from TimeSeriesDL.model.auto_encoder.conv_ae_model import ConvAE
 
 
 class AutoEncoderCollate:

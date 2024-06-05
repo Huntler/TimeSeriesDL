@@ -21,7 +21,7 @@ class BaseModel(nn.Module):
         nn (nn.Module): Torch nn module.
     """
 
-    def __init__(self, writer: SummaryWriter = None) -> None:
+    def __init__(self, name: str, tag: str = "", log: bool = True) -> None:
         """Initializes the TensorBoard logger and checks for available GPU(s).
 
         Args:
@@ -30,11 +30,8 @@ class BaseModel(nn.Module):
         super(BaseModel, self).__init__()
 
         # enable tensorboard
-        self._writer = writer
-        if self._writer is None:
-            self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
-            self._tb_path = f"runs/{self.__tb_sub}"
-            self._writer = SummaryWriter(self._tb_path)
+        self._writer = False
+        self._init_writer(name, tag, log)
         self.__sample_position = 0
 
         # check for gpu
@@ -51,6 +48,22 @@ class BaseModel(nn.Module):
         self._optim: Optimizer = None
 
         self.test_stats = None
+
+    def _init_writer(self, name: str, tag: str, log: bool) -> None:
+        """Initializes the TensorBoard writer.
+
+        Args:
+            name (str): The name of the model folder.
+            tag (str): The tag name of a primary folder.
+            log (bool): Enable logging.
+        """
+        if not log:
+            return
+
+        now = datetime.now()
+        self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
+        self._tb_path = f"runs/{tag}/{name}/{self._tb_sub}"
+        self._writer = SummaryWriter(self._tb_path)
 
     @property
     def log_path(self) -> str:
@@ -127,7 +140,7 @@ class BaseModel(nn.Module):
         """Trains the model on a dataset. Valdiation- and Testdatasets can be set as well.
 
         Args:
-            train (Dataset): Dataset to train on.
+            train (DataLoader): Dataset to train on.
             validate (Dataset, optional): Validate model on this dataset. Defaults to None.
             test (Dataset, optional): Test model on this dataset. Defaults to None.
             epochs (int, optional): Run training for given amount of epochs. Defaults to 1.
@@ -136,9 +149,7 @@ class BaseModel(nn.Module):
         self.train()
 
         # check if the dataset is wrapped within a Dataloader
-        if not isinstance(train, DataLoader):
-            print("Please provide the dataset wrapped in a torch DataLoader.")
-            exit(1)
+        assert isinstance(train, DataLoader), "Please provide the dataset wrapped in a torch DataLoader."
 
         # run for n epochs specified
         pbar = tqdm(
@@ -213,7 +224,7 @@ class BaseModel(nn.Module):
         # predict all y's of the validation set and append the model's accuracy
         # to the list
         for x, y_hat in loader:
-            y = self.predict(x, as_list=False)
+            y = self.predict(x, as_array=False)
             y_hat = y_hat.to(self._device)
 
             loss, data = self._loss_suite.calulate(y, y_hat)
@@ -233,13 +244,13 @@ class BaseModel(nn.Module):
 
         return accuracy
 
-    def predict(self, x: torch.tensor, as_list: bool = True) -> List:
+    def predict(self, x: torch.tensor, as_array: bool = False) -> List:
         """This method only predicts future steps based on the given curve described by
         the datapoints X.
 
         Args:
             x (torch.tensor): The datapoints.
-            future_steps (int, optional): The amount of steps to look into future. Defaults to 1.
+            as_array (bool, optional): Returns the prediction as np.array. Defaults to False.
 
         Returns:
             List: The prediction.
@@ -247,7 +258,7 @@ class BaseModel(nn.Module):
         x = x.to(self._device)
         with torch.no_grad():
             out = self(x)
-            if as_list:
-                out = list(out.cpu().numpy())
+            if as_array:
+                out = out.cpu().numpy()
 
         return out
