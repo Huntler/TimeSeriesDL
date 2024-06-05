@@ -18,6 +18,7 @@ model:
   padding: 0
   lstm_layers: 2
   hidden_dim: 128
+  save_every: 5
 precision: float32
 train_epochs: 50
 device: cuda

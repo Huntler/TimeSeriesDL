@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import List
+import os
 
 import numpy as np
 import torch
@@ -21,7 +22,7 @@ class BaseModel(nn.Module):
         nn (nn.Module): Torch nn module.
     """
 
-    def __init__(self, name: str, tag: str = "", log: bool = True) -> None:
+    def __init__(self, name: str, save_every: int = 0, tag: str = "", log: bool = True) -> None:
         """Initializes the TensorBoard logger and checks for available GPU(s).
 
         Args:
@@ -33,6 +34,7 @@ class BaseModel(nn.Module):
         self._writer = False
         self._init_writer(name, tag, log)
         self.__sample_position = 0
+        self._save_every = save_every
 
         # check for gpu
         self._device = "cpu"
@@ -62,7 +64,16 @@ class BaseModel(nn.Module):
 
         now = datetime.now()
         self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-        self._tb_path = f"runs/{tag}/{name}/{self._tb_sub}"
+        path = f"runs/{tag}/{name}/{self._tb_sub}"
+
+        # check if TensorBoard path exists, if so add "_<increment>" to the path string
+        for i in range(100):
+            if os.path.exists(path):
+                path += f"_{i}"
+            else:
+                break
+
+        self._tb_path = path
         self._writer = SummaryWriter(self._tb_path)
 
     @property
@@ -102,12 +113,16 @@ class BaseModel(nn.Module):
         print(f"Using {self._device} backend.")
         self.to(self._device)
 
-    def save_to_default(self) -> None:
+    def save_to_default(self, post_fix: str | int = None) -> None:
         """This method saves the current model state to the tensorboard
         directory.
+
+        Args:
+            post_fix (str | int): Adds a postfix to the model path. Defaults to None.‚
         """
         params = self.state_dict()
-        torch.save(params, f"{self._tb_path}/model.torch")
+        post_fix = f"_{post_fix}" if post_fix else ""
+        torch.save(params, f"{self._tb_path}/models/model{post_fix}.torch")
 
     def load(self, path: str) -> None:
         """Loads a model with its parameters into this object.
@@ -149,7 +164,9 @@ class BaseModel(nn.Module):
         self.train()
 
         # check if the dataset is wrapped within a Dataloader
-        assert isinstance(train, DataLoader), "Please provide the dataset wrapped in a torch DataLoader."
+        assert (
+            isinstance(train, DataLoader)
+            ), "Please provide the dataset wrapped in a torch DataLoader."
 
         # run for n epochs specified
         pbar = tqdm(
@@ -201,6 +218,10 @@ class BaseModel(nn.Module):
                 self.eval()
                 _ = self.validate(test, e, "Test")
                 self.train()
+
+            # save the model after every n epochs
+            if self._save_every > 0 and e % self._save_every == 0:
+                self.save_to_default()
 
         self.eval()
         self._writer.flush()

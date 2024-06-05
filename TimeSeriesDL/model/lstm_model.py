@@ -20,10 +20,11 @@ class LSTM(BaseModel):
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         log: bool = True,
         tag: str = "",
+        save_every: int = 0,
         precision: torch.dtype = torch.float32
     ) -> None:
         # initialize components using the parent class
-        super(LSTM, self).__init__("LSTM", tag, log)
+        super(LSTM, self).__init__("LSTM", save_every, tag, log)
 
         # LSTM hyperparameters
         self._hidden_dim = hidden_dim

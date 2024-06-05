@@ -33,11 +33,12 @@ class ConvVAE(ConvAE):
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
         log: bool = True,
+        save_every: int = 0,
         precision: torch.dtype = torch.float32,
     ) -> None:
         super().__init__(features, sequence_length, channels, extracted_features, latent_size,
                          kernel_size, stride, padding, last_activation, lr, lr_decay,
-                         adam_betas, tag, log, precision)
+                         adam_betas, tag, log, save_every, precision)
         # setup latent space distribution
         self._mean_layer = nn.Linear(
             self._enc_2_len * self._latent_space,

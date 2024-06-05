@@ -31,9 +31,10 @@ class ConvAE(AutoEncoder):
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
         log: bool = True,
+        save_every: int = 0,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        super().__init__("ConvAE", tag, log)
+        super().__init__("ConvAE", save_every, tag, log)
 
         # data parameter
         self._features = features

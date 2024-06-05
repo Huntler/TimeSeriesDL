@@ -33,9 +33,10 @@ class ConvLSTM(BaseModel):
         adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
         log: bool = True,
+        save_every: int = 0,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        super().__init__("ConvLSTM", tag, log)
+        super().__init__("ConvLSTM", save_every, tag, log)
 
         # define sequence parameters
         self._features = features
