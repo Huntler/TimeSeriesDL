@@ -3,8 +3,8 @@ import argparse
 import os
 from typing import Dict
 
-import numpy as np
 import torch
+import numpy as np
 from scipy.io import savemat
 from tqdm import trange
 from TimeSeriesDL.data import Dataset
@@ -19,10 +19,10 @@ def predicted_dataset(train_args: Dict, dataset: Dataset) -> Dataset:
 
     Args:
         train_args (Dict): The config args of a trained model.
-        dataset (Dataset): The dataset
+        dataset (Dataset): The dataset which serves as an input.
 
     Returns:
-        Dataset: _description_
+        Dataset: The predicted dataset.
     """
     train_args["model"]["log"] = False
     model: BaseModel = config.get_model(train_args["model_name"])(**train_args["model"])
@@ -35,7 +35,7 @@ def predicted_dataset(train_args: Dict, dataset: Dataset) -> Dataset:
     full_sequence[0:window_len, :] = dataset.slice(0, window_len)
 
     # predict based on sliding window
-    print("Predicting...")
+    print("Predicting...", train_args["dataset"]["custom_path"])
     for i in trange(0, dataset.sample_size - window_len, f_len):
         window = full_sequence[i:i + window_len]
         window = torch.tensor(window, device=train_args["device"], dtype=torch.float32)
@@ -65,29 +65,32 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--config", type=str, required=True)
-    parser.add_argument("--compare", default=False, action="store_true")
+    parser.add_argument("--compare-to", type=str, default=None)
     parser.add_argument("--features", type=int, nargs="+")
+    parser.add_argument("--unscale", action="store_true", default=False)
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int, default=-1)
-    parser.add_argument("--output", type=str)
+    parser.add_argument("--output", type=str, default=None)
 
     # define args
     args = parser.parse_args()
     train_args = config.get_args(args.config)
+    if args.compare_to:
+        train_args["dataset"]["custom_path"] = args.compare_to
 
     # load the dataset and put it into the visualizer
     data = Dataset(**train_args["dataset"])
-    vis = VisualizeDataset(data, name="Train")
+    vis = VisualizeDataset(data, name="Input", scale_back=args.unscale)
 
     # load the second dataset to compare to the already loaded one if the argument is provided
-    if args.compare:
+    if args.compare_to:
         data2 = predicted_dataset(train_args, data)
         overlay = VisualizeDataset(data2, name="Predicted", overlay_mode=True)
         vis.set_overlay(overlay)
 
     # visualize the dataset(s)
-    features = args.get("features", list(range(len(data.label_names))))
+    features = args.features if args.features else list(range(len(data.label_names)))
     vis.set_feature(features)
 
     # test save last configuration but of all samples
-    vis.visualize(start=args.start, end=args.end, save=args.get("output", None))
+    vis.visualize(start=args.start, end=args.end, save=args.output)

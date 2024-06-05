@@ -41,7 +41,8 @@ class VisualizeDataset:
     """This class visualizes a dataset, with the ability to overwrite label names, select features
     to visualizes, and possibility to overlay a second dataset.
     """
-    def __init__(self, dataset: Dataset, name: str = None, overlay_mode: bool = False) -> None:
+    def __init__(self, dataset: Dataset, name: str = None, overlay_mode: bool = False,
+                 scale_back: bool = False) -> None:
         """Initializes a visualization object to show insights into a dataset.
 
         Args:
@@ -50,8 +51,10 @@ class VisualizeDataset:
             name (str, optional): The name of the dataset. Defaults to the dataset file name.
             overlay_mode (bool, optional): This object should be used as an overlay.
             Defaults to False.
+            scale_back (bool): Scales the dataset back if it was normalized. Defaults to False.
         """
         self._dataset = dataset
+        self._scale_back = scale_back
         self._name = name if name else self._dataset.d_type
         assert len(self._dataset.shape) == 3, "Expected dataset to have two dimensions."
 
@@ -136,8 +139,8 @@ class VisualizeDataset:
             return num_features, 1
 
         h, w = max_h, math.ceil(num_features / max_h)
-        if (h * w - num_features) % w == 0:
-            return h - (h * w - num_features) // 2, w
+        if h * w - num_features > w:
+            return h - ((h * w - num_features) % w), w
         return h, w
 
     def visualize(self, start: int = 0, end: int = -1, size: int = 3, save: str = None) -> None:
@@ -161,9 +164,15 @@ class VisualizeDataset:
         _overlay_data = None
         if self._overlay:
             _overlay_data = self._overlay.dataset.slice(start, end, self._feature)
+            if self._scale_back:
+                _overlay_data = self._overlay.dataset.scale_back(_overlay_data[:, 0, :])
+                _overlay_data = np.expand_dims(_overlay_data, 1)
 
         # slice the dataset as required to view start/end/selected features
         data = self._dataset.slice(start, end, self._feature)
+        if self._scale_back:
+            data = self._dataset.scale_back(data[:, 0, :])
+            data = np.expand_dims(data, 1)
 
         # setup graph and layout
         grid = self._get_grid(4, len(self._feature))

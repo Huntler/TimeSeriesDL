@@ -20,6 +20,7 @@ if not args.samples:
 path = args.path if args.path else"examples/train_1.mat"
 samples = int(args.samples)
 version = int(args.version) if args.version else 0
+print(f"Generating version {version}")
 
 d = {}
 if version == 0:
@@ -46,9 +47,9 @@ elif version == 1:
     savemat(path, d)
 
 elif version == 2:
-    # same as version 1 but shifted by x=2
+    # same as version 1 but shifted by x=5
     # Generate a sequence of x values
-    x = np.linspace(2, 12, samples)
+    x = np.linspace(1, 1, samples)
 
     # Calculate y values for each function
     y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5)
@@ -61,16 +62,17 @@ elif version == 2:
     savemat(path, d)
 
 elif version == 3:
-    # same as version 1 but shifted by x=2 and y*0.9
+    # same as version 1 but shifted by x=1 and y*0.2
     # Generate a sequence of x values
-    x = np.linspace(1, 11, samples)
+    x = np.linspace(0, 10, samples)
 
     # Calculate y values for each function
-    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5) * 0.9
-    y2 = np.exp(y1) * 0.9
-    y3 = np.sin(y1*2) * 0.9
-    y4 = np.sin(np.exp(x/2)) * 0.9
-    y5 = np.log(x + 1) * 0.9
+    factor = 0.8
+    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5) * factor
+    y2 = np.exp(y1) * factor
+    y3 = np.sin(y1*2) * factor
+    y4 = np.sin(np.exp(x/2)) * factor
+    y5 = np.log(x + 1) * factor
 
     d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
     savemat(path, d)
