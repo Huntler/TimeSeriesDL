@@ -17,7 +17,7 @@ if not args.samples:
     print("Provide a number of samples to generate.")
     exit(1)
 
-path = args.path if args.path else"examples/train.mat"
+path = args.path if args.path else"examples/train_1.mat"
 samples = int(args.samples)
 version = int(args.version) if args.version else 0
 
