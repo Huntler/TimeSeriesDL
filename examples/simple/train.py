@@ -36,9 +36,10 @@ model.save_to_default()
 input_vis = VisualizeDataset(data, name="Input")
 input_vis.generate_overlay(model)
 
-input_vis.set_feature([0, 1])
+input_vis.set_feature(list(range(len(data.label_names))))
 input_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
 
 # visualize the model
+model.use_device("cpu")
 vis = VisualizeConv(model)
 vis.visualize(f"{model.log_path}/analysis.png")
