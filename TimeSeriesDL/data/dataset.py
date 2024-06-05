@@ -103,6 +103,20 @@ class Dataset(torch.utils.data.Dataset):
         """
         return self._mat.shape
 
+    def sample_shape(self, label: bool = False) -> Tuple[int, int, int]:
+        """Returns the shape of one sample.
+
+        Args:
+            label (bool): Return the shape of a label
+
+        Returns:
+            Tuple[int, int, int]: The shape of one sample as tuple of ints.
+        """
+        _, channels,features = self._mat.shape
+        if not label:
+            return self._seq, channels, features
+        return self._f_seq, channels, features
+
     @property
     def sample_size(self) -> int:
         """Returns the sample size of the dataset.

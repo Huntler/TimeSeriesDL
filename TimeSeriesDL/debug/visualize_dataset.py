@@ -1,9 +1,14 @@
 """This module visualizes a dataset's data."""
 import math
+import os
 from typing import List, Tuple
 import matplotlib.pyplot as plt
+from scipy.io import savemat
+import torch
 import numpy as np
+from tqdm import trange
 from TimeSeriesDL.data.dataset import Dataset
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 
@@ -109,6 +114,46 @@ class VisualizeDataset:
         assert getattr(overlay, 'is_overlay', False), "Expected overlay to have 'is_overlay' set to True"
         self._overlay = overlay
 
+    def generate_overlay(self, model: BaseModel) -> None:
+        """Generates an overlay for this visualized dataset, which will be plotted in
+        same graph. This method can only be called on a normal object (i.e., not an
+        overlay itself). If you try to generate an overlay for another overlay, this
+        will raise an assertion error.
+        
+        Args:
+            model (BaseModel): The model to generate the overlay for.
+        """
+        # create storage of prediction
+        window_len, _, _ = self._dataset.sample_shape()
+        f_len, _, _ = self._dataset.sample_shape(label=True)
+        full_sequence = np.zeros(self._dataset.shape)
+        full_sequence[0:window_len, :] = self._dataset.slice(0, window_len)
+
+        # predict based on sliding window
+        print("Predicting...")
+        for i in trange(0, self._dataset.sample_size - window_len, f_len):
+            window = full_sequence[i:i + window_len]
+            window = torch.tensor(window, device=model.device, dtype=torch.float32)
+            window = torch.unsqueeze(window, 0)
+            sample = model.predict(window)
+            full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
+
+        # remove the channel and prepare to save the predicted data
+        full_sequence = np.squeeze(full_sequence, 1)
+        full_sequence = self._dataset.scale_back(full_sequence)
+        full_sequence = np.swapaxes(full_sequence, 0, 1)
+
+        # save prediction using the label names from the original dataset
+        export = {}
+        for i, label_name in enumerate(self._dataset.label_names):
+            export[label_name] = list(full_sequence[i, :])
+        savemat("temp.mat", export)
+
+        # load saved matrix as a dataset and delete the temporary file
+        dataset = Dataset(custom_path="temp.mat")
+        os.remove("temp.mat")
+
+        self._overlay = VisualizeDataset(dataset, name="Predicted", overlay_mode=True)
 
     def set_feature(self, feature: int | List[int], label: str | List[str] = None) -> None:
         """Selects one or multiple features to be shown on the graph.
