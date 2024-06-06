@@ -43,13 +43,14 @@ class BaseModel(nn.Module):
         path = f"runs/{tag}/{name}"
 
         # check if log path exists, if so add "_<increment>" to the path string
+        _path = path
         for i in range(100):
-            if os.path.exists(path):
-                path += f"_{i}"
+            if os.path.exists(_path):
+                _path = f"{path}_{i}"
             else:
                 break
 
-        self._tb_path = path + "/"
+        self._tb_path = _path + "/"
 
     @property
     def log_path(self) -> str:
