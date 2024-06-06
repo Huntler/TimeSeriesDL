@@ -23,25 +23,27 @@ class Dataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        d_type: str = "train",
         normalize: bool = True,
         bounds: Tuple[int] = (0, 1),
         future_steps: int = 1,
         sequence_length: int = 32,
         precision: np.dtype = np.float32,
-        custom_path: str = None,
+        path: str = None,
         ae_mode: bool = False
     ):
-        super(Dataset, self).__init__()
+        super().__init__()
 
         self._precision = precision
         self._seq = sequence_length
         self._f_seq = future_steps
         self._ae_mode = ae_mode
 
-        # load the dataset specified
-        self._d_type = d_type
-        self._file = custom_path if custom_path else f"./data/{self._d_type}.mat"
+        # load the dataset specified, if a path is provided,
+        # otherwise create an empty dataset
+        self._file = path
+        if path is None:
+            return
+
         self._mat, self._labels = self.load_data()
 
         # normalize the dataset between values of o to 1
@@ -68,14 +70,19 @@ class Dataset(torch.utils.data.Dataset):
         """
         return self._labels
 
-    @property
-    def d_type(self) -> str:
-        """Returns the d_type (=name) of the dataset.
+    def overwrite_content(self, mat: np.array, labels: List[str]) -> None:
+        """Overwrites the matrix of this dataset. Make sure that the shape of the new
+        matrix is compatible, especially the matrix needs to have 3 dimensions: Samples, 
+        Channles, Features.
 
-        Returns:
-            str: The d_type of the dataset.
+        Args:
+            mat (np.array): The new matrix.
         """
-        return self._d_type
+        self._mat = mat
+        self._labels = labels
+
+        assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
+        assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
 
     def load_data(self) -> Tuple[np.array, List[str]]:
         """Loads the dataset from the path self._file which is generated as './data/{d_type}.mat'.
@@ -97,6 +104,14 @@ class Dataset(torch.utils.data.Dataset):
         mat: np.array = np.array(mat)
         mat = np.swapaxes(mat, 0, 1)
         return mat.astype(self._precision), labels
+
+    def set_sequence(self, length: int) -> None:
+        """Sets the sequence length of the samples output.
+
+        Args:
+            length (int): The length to output.
+        """
+        self._seq = length
 
     @property
     def shape(self) -> Tuple[int]:

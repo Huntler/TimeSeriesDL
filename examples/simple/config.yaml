@@ -2,7 +2,10 @@ dataset:
   d_type: train
   sequence_length: 2500
   future_steps: 100
-  custom_path: ./examples/train_3.mat
+  custom_path: 
+    - ./examples/train_1.mat
+    - ./examples/train_2.mat
+    - ./examples/train_3.mat
   
 testset:
   d_type: test

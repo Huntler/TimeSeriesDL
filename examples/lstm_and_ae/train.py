@@ -60,35 +60,24 @@ if __name__ == "__main__":
     print("Train the ConvAE")
     ae, data, ae_args = train("./examples/lstm_and_ae/ae_config.yaml")
 
-    print("\nEncode dataset")
-    export = "runs/" + ae_args["model"]["tag"]
-    encode_dataset(train_args=config.get_args(ae.log_path + "/config.yml"),
-                   export_path=export + "/encoded.mat")
-
-    # train the lstm on the encoded dataset
+    # train the lstm on the dataset using the encoder
     print("\nTrain LSTM")
     collate_fn = AutoEncoderCollate(ae, device=ae.device).collate_fn()
     lstm, encoded, lstm_args = train("./examples/lstm_and_ae/lstm_config.yaml", collate_fn)
 
     print("\nApply LSTM")
     encoded.apply(lstm)
-    data.save(export + "/prediction.mat")
 
     print("\nDecode prediction")
-    ae_args["dataset"]["custom_path"] = export + "/prediction.mat"
-    decode_dataset(ae_args, data.scale_back, export_path=export + "/decoded.mat")
-
-    ae_args["dataset"]["custom_path"] = export + "/decoded.mat"
-    ae_args["dataset"]["ae_mode"] = False
-    pred = Dataset(**ae_args["dataset"])
+    decoded = decode_dataset(ae_args, data.scale_back, data.labels)
 
     # visualize the test data
     visualization = VisualizeDataset(data, name="Input")
-    overlay = VisualizeDataset(pred, name="Prediction", overlay_mode=True)
+    overlay = VisualizeDataset(decoded, name="Prediction", overlay_mode=True)
 
     visualization.set_overlay(overlay)
     visualization.set_feature(list(range(len(data.label_names))))
-    visualization.visualize(save=f"{export}/predict_on_test.png")
+    visualization.visualize(save=f"{lstm.log_path}/predict_on_test.png")
 
     # visualize first layer of AE
     ae.use_device("cpu")
