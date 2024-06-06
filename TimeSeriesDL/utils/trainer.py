@@ -127,7 +127,7 @@ class ModelTrainer:
 
             y = model.predict(x, as_array=False)
 
-            losses = self._loss_suite.calulate(y, y_hat)
+            losses = self._loss_suite.calculate(y, y_hat)
             for name, loss in losses:
                 loss_list = accuracies.get(name, [])
                 loss_list.append(1 - loss)
