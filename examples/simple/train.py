@@ -20,7 +20,7 @@ dataloader = DataLoader(data, **train_args["dataloader"])
 
 # create a testset, used to optimize parameters of the model
 test = Dataset(**train_args["testset"])
-testloader = DataLoader(test, **train_args["dataloader"])
+testloader = DataLoader(test, batch_size=train_args["dataloader"]["batch_size"])
 
 trainer = ModelTrainer(**train_args["trainer"])
 trainer.set_dataset(dataloader)
