@@ -3,9 +3,29 @@ dataset:
   sequence_length: 2500
   future_steps: 100
   custom_path: ./examples/train_3.mat
+  
+testset:
+  d_type: test
+  sequence_length: 2500
+  future_steps: 100
+  custom_path: ./examples/train_4.mat
+  
 dataloader:
   batch_size: 64
   shuffle: True
+
+trainer:
+  epochs: 4
+  save_every: 2
+
+loss_suite:
+  main: MSELoss
+  log:
+    - L1Loss
+  optimizer: Adam
+  lr: 0.001
+  lr_decay: 0.999
+
 model_name: ConvLSTM
 model_path: None
 model:
@@ -18,7 +38,6 @@ model:
   padding: 0
   lstm_layers: 2
   hidden_dim: 128
-  save_every: 2
+
 precision: float32
-train_epochs: 10
 device: mps

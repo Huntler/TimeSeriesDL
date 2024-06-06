@@ -1,8 +1,5 @@
 """This module contains a simple CNN/LSTM model."""
-from typing import Tuple
-
 import torch
-from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.utils.activations import get_activation_from_string
 from TimeSeriesDL.utils.config import config
 from TimeSeriesDL.model.base_model import BaseModel
@@ -28,16 +25,10 @@ class ConvLSTM(BaseModel):
         padding: int = 0,
         lstm_layers: int = 1,
         out_act: str = "sigmoid",
-        lr: float = 1e-3,
-        lr_decay: float = 9e-1,
-        adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
-        log: bool = True,
-        save_every: int = 0,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        super().__init__("ConvLSTM", save_every, tag, log)
-
+        super().__init__("ConvLSTM", tag)
         # define sequence parameters
         self._features = features
         self._sequence_length = sequence_length
@@ -76,12 +67,6 @@ class ConvLSTM(BaseModel):
 
         self._linear_1 = torch.nn.Linear(self._hidden_dim, self._latent_size, dtype=self._precision)
         self._linear_2 = torch.nn.Linear(self._latent_size, self._features, dtype=self._precision)
-
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
-        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
-
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
-        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     @property
     def precision(self) -> torch.dtype:
