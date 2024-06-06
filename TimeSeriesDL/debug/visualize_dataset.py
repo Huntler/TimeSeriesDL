@@ -114,7 +114,7 @@ class VisualizeDataset:
         assert getattr(overlay, 'is_overlay', False), "Expected overlay to have 'is_overlay' set to True"
         self._overlay = overlay
 
-    def generate_overlay(self, model: BaseModel) -> None:
+    def generate_overlay(self, model: BaseModel, dataset: Dataset = None) -> None:
         """Generates an overlay for this visualized dataset, which will be plotted in
         same graph. This method can only be called on a normal object (i.e., not an
         overlay itself). If you try to generate an overlay for another overlay, this
@@ -122,16 +122,18 @@ class VisualizeDataset:
         
         Args:
             model (BaseModel): The model to generate the overlay for.
+            dataset (Dataset): The dataset on which the model predicts. Defaults to None.
         """
+        dataset = dataset if dataset else self._dataset
         # create storage of prediction
-        window_len, _, _ = self._dataset.sample_shape()
-        f_len, _, _ = self._dataset.sample_shape(label=True)
-        full_sequence = np.zeros(self._dataset.shape)
-        full_sequence[0:window_len, :] = self._dataset.slice(0, window_len)
+        window_len, _, _ = dataset.sample_shape()
+        f_len, _, _ = dataset.sample_shape(label=True)
+        full_sequence = np.zeros(dataset.shape)
+        full_sequence[0:window_len, :] = dataset.slice(0, window_len)
 
         # predict based on sliding window
         print("Predicting...")
-        for i in trange(0, self._dataset.sample_size - window_len, f_len):
+        for i in trange(0, dataset.sample_size - window_len, f_len):
             window = full_sequence[i:i + window_len]
             window = torch.tensor(window, device=model.device, dtype=torch.float32)
             window = torch.unsqueeze(window, 0)
@@ -140,12 +142,12 @@ class VisualizeDataset:
 
         # remove the channel and prepare to save the predicted data
         full_sequence = np.squeeze(full_sequence, 1)
-        full_sequence = self._dataset.scale_back(full_sequence)
+        full_sequence = dataset.scale_back(full_sequence)
         full_sequence = np.swapaxes(full_sequence, 0, 1)
 
         # save prediction using the label names from the original dataset
         export = {}
-        for i, label_name in enumerate(self._dataset.label_names):
+        for i, label_name in enumerate(dataset.label_names):
             export[label_name] = list(full_sequence[i, :])
         savemat("temp.mat", export)
 

@@ -1,48 +1,67 @@
 """Example usage of the any model."""
 from torch.utils.data import DataLoader
-from TimeSeriesDL.debug.visualize_dataset import VisualizeDataset
+from TimeSeriesDL.debug.visualize_cnn import VisualizeConv
+from TimeSeriesDL.loss.measurement_suite import LossMeasurementSuite
 from TimeSeriesDL.model import BaseModel
-from TimeSeriesDL.data import Dataset, encode_dataset, decode_dataset
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.data import Dataset
+from TimeSeriesDL.utils import config, ModelTrainer
+from TimeSeriesDL.debug.visualize_dataset import VisualizeDataset
 
 # load training arguments (equals example/simple_model.py)
 train_args = config.get_args("./examples/auto_encoder/config.yaml")
 
-# create a dataset loader which loads a matplotlib matrix from ./train.mat
+# create the loss suite handling loss calculation for the
+# backpropagation and logging
+loss_suite = LossMeasurementSuite(**train_args["loss_suite"])
+
+# create a dataset loader which loads one or multiple scipy matrices
 data = Dataset(**train_args["dataset"])
 dataloader = DataLoader(data, **train_args["dataloader"])
+
+# create a testset, used to optimize parameters of the model
+test = Dataset(**train_args["testset"])
+testloader = DataLoader(test, **train_args["dataloader"])
+
+trainer = ModelTrainer(**train_args["trainer"])
+trainer.set_dataset(dataloader)
+trainer.set_testset(testloader)
+trainer.set_loss_suite(loss_suite)
 
 # create a model based on what is defined in the config
 # to do so, a model needs to be registered using config.register_model()
 model_name = train_args["model_name"]
-ae_model: BaseModel = config.get_model(model_name)(**train_args["model"])
-ae_model.use_device(train_args["device"])
-
-# train the model on the dataset for 5 epochs and log the progress in a CLI
-# to review the model's training performance, open TensorBoard in a browser
-ae_model.learn(train=dataloader, epochs=train_args["train_epochs"])
-
-# save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
-ae_model.save_to_default()
+model: BaseModel = config.get_model(model_name)(**train_args["model"])
+model.use_device(train_args["device"])
 
 # also, store a modified copy of the training arguments containing the model path
-# this makes comparisons between multiple experiments easier<
-train_args["model_path"] = ae_model.log_path + "/model.torch"
-config.store_args(f"{ae_model.log_path}/config.yml", train_args)
+# this makes comparisons between multiple experiments easier
+train_args["model_path"] = model.log_path + "/models/model.torch"
+config.store_args(f"{model.log_path}/config.yml", train_args)
 
-# use the trained AE to encode -> decode a dataset...
-encode_dataset(train_args, export_path="examples/auto_encoder/train_encoded.mat")
-train_args["dataset"]["custom_path"] = "examples/auto_encoder/train_encoded.mat"
+# train the model using the cvonfigured trainer
+trainer.train(model)
 
-decode_dataset(train_args, data.scale_back, labels=data.label_names,
-               export_path="examples/auto_encoder/train_decoded.mat")
-decoded = Dataset(custom_path="examples/auto_encoder/train_decoded.mat")
+# test the model
+result = trainer.test(model)
 
-# ...and visualize the decoded dataset against the input
-input_vis = VisualizeDataset(data, name="Input")
-output_vis = VisualizeDataset(decoded, name="Predicted", overlay_mode=True)
+# save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
+model.save_to_default()
 
-input_vis.set_feature([0, 1])
-input_vis.set_overlay(output_vis)
-input_vis.visualize()
-input_vis.visualize(save="examples/auto_encoder/train_transcoded_comparison.png")
+# visualize train data
+train_vis = VisualizeDataset(data, name="Input")
+train_vis.generate_overlay(model)
+
+train_vis.set_feature(list(range(len(data.label_names))))
+train_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
+
+# visualize the test data
+test_vis = VisualizeDataset(test, name="Input")
+test_vis.generate_overlay(model)
+
+test_vis.set_feature(list(range(len(data.label_names))))
+test_vis.visualize(save=f"{model.log_path}/predict_on_test.png")
+
+# visualize the model
+model.use_device("cpu")
+vis = VisualizeConv(model)
+vis.visualize(f"{model.log_path}/analysis.png")

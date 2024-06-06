@@ -1,7 +1,5 @@
 """This module contains a straightfowrad LSTM model."""
-from typing import Tuple
 import torch
-from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.activations import get_activation_from_string
 from TimeSeriesDL.utils.config import config
@@ -15,16 +13,11 @@ class LSTM(BaseModel):
         lstm_layers: int = 1,
         hidden_dim: int = 64,
         last_activation: str = "relu",
-        lr: float = 1e-3,
-        lr_decay: float = 9e-1,
-        adam_betas: Tuple[float, float] = (9e-1, 999e-3),
-        log: bool = True,
         tag: str = "",
-        save_every: int = 0,
         precision: torch.dtype = torch.float32
     ) -> None:
         # initialize components using the parent class
-        super(LSTM, self).__init__("LSTM", save_every, tag, log)
+        super().__init__("LSTM", tag)
 
         # LSTM hyperparameters
         self._hidden_dim = hidden_dim
@@ -50,13 +43,6 @@ class LSTM(BaseModel):
 
         self._linear_2 = torch.nn.Linear(
             64, self._features, dtype=self._precision)
-
-        # define optimizer, loss function and variable learning rate
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss())
-        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
-
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
-        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     def forward(self, x):
         # LSTM forward pass

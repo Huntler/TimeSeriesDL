@@ -1,10 +1,8 @@
 """This module contains a variational auto-encoder based on CNN."""
-
-from datetime import datetime
+import os
 from typing import Tuple
 import torch
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
 from TimeSeriesDL.model import ConvAE
 from TimeSeriesDL.utils.config import config
 
@@ -28,17 +26,11 @@ class ConvVAE(ConvAE):
         stride: int = 1,
         padding: int = 0,
         last_activation: str = "sigmoid",
-        lr: float = 1e-3,
-        lr_decay: float = 9e-1,
-        adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
-        log: bool = True,
-        save_every: int = 0,
         precision: torch.dtype = torch.float32,
     ) -> None:
         super().__init__(features, sequence_length, channels, extracted_features, latent_size,
-                         kernel_size, stride, padding, last_activation, lr, lr_decay,
-                         adam_betas, tag, log, save_every, precision)
+                         kernel_size, stride, padding, last_activation, tag, precision)
         # setup latent space distribution
         self._mean_layer = nn.Linear(
             self._enc_2_len * self._latent_space,
@@ -50,14 +42,18 @@ class ConvVAE(ConvAE):
             self._enc_2_len * self._latent_space, dtype=self._precision
         )
 
-    def _init_writer(self, name, tag, log) -> None:
-        if not log:
-            return
+    def _init_log_path(self, name, tag) -> None:
+        path = f"runs/{tag}/VAE"
 
-        now = datetime.now()
-        self._tb_sub = now.strftime("%d%m%Y_%H%M%S")
-        self._tb_path = f"runs/{tag}/VAE/{self._tb_sub}"
-        self._writer = SummaryWriter(self._tb_path)
+        # check if log path exists, if so add "_<increment>" to the path string
+        _path = path
+        for i in range(100):
+            if os.path.exists(_path):
+                _path = f"{path}_{i}"
+            else:
+                break
+
+        self._tb_path = _path + "/"
 
     def reparameterization(self, mean: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Samples from the latent representation, which is a random distribution in this case.

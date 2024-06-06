@@ -43,7 +43,6 @@ trainer.train(model)
 
 # test the model
 result = trainer.test(model)
-print(result)
 
 # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
 model.save_to_default()

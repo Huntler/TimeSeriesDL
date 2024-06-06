@@ -40,8 +40,7 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, AutoEncoder]:
         print("The AE model needs to be trained first.")
         exit(1)
 
-    # load the AE and prevent logging
-    train_args["model"]["log"] = False
+    # load the AE
     model_name = train_args["model_name"]
     ae = config.get_model(model_name)(**train_args["model"])
     ae.load(path=train_args["model_path"])

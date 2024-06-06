@@ -1,19 +1,19 @@
 """Example usage of the any model."""
-import numpy as np
-import torch
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 from TimeSeriesDL.model import BaseModel
-from TimeSeriesDL.data import Dataset, encode_dataset
-from TimeSeriesDL.model import ConvAE, LSTM
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.data import Dataset, encode_dataset, decode_dataset, AutoEncoderCollate
+from TimeSeriesDL.utils import config, ModelTrainer
+from TimeSeriesDL.loss.measurement_suite import LossMeasurementSuite
+from TimeSeriesDL.debug.visualize_dataset import VisualizeDataset
+from TimeSeriesDL.debug.visualize_cnn import VisualizeConv
 
 
-def train(path: str) -> BaseModel:
+def train(path: str, collate = None) -> BaseModel:
     """Trains based on a given config.
 
     Args:
         path (str): The path to a train config.
+        collate_fn (Callable): The coolate function used by the dataloader.
 
     Returns:
         BaseModel: The trained model.
@@ -21,9 +21,20 @@ def train(path: str) -> BaseModel:
     # load training arguments (equals example/simple_model.py)
     train_args = config.get_args(path)
 
+    # create the loss suite handling loss calculation for the
+    # backpropagation and logging
+    loss_suite = LossMeasurementSuite(**train_args["loss_suite"])
+
     # create a dataset loader which loads a matplotlib matrix from ./train.mat
-    data = Dataset(**train_args["dataset"])
-    dataloader = DataLoader(data, **train_args["dataloader"])
+    _data = Dataset(**train_args["dataset"])
+    dataloader = DataLoader(_data, **train_args["dataloader"])
+    if collate:
+        dataloader = DataLoader(_data, collate_fn=collate, **train_args["dataloader"])
+
+    # set up the trainer
+    trainer = ModelTrainer(**train_args["trainer"])
+    trainer.set_dataset(dataloader)
+    trainer.set_loss_suite(loss_suite)
 
     # create a model based on what is defined in the config
     # to do so, a model needs to be registered using config.register_model()
@@ -31,66 +42,55 @@ def train(path: str) -> BaseModel:
     model: BaseModel = config.get_model(model_name)(**train_args["model"])
     model.use_device(train_args["device"])
 
-    # train the model on the dataset for 5 epochs and log the progress in a CLI
-    # to review the model's training performance, open TensorBoard in a browser
-    model.learn(train=dataloader,
-                epochs=train_args["train_epochs"], verbose=True)
+    # also, store a modified copy of the training arguments containing the model path
+    # this makes comparisons between multiple experiments easier<
+    train_args["model_path"] = model.log_path + "/models/model.torch"
+    config.store_args(f"{model.log_path}/config.yml", train_args)
+
+    # train the model using the cvonfigured trainer
+    trainer.train(model)
 
     # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
     model.save_to_default()
-
-    # also, store a modified copy of the training arguments containing the model path
-    # this makes comparisons between multiple experiments easier<
-    train_args["model_path"] = model.log_path + "/model.torch"
-    config.store_args(f"{model.log_path}/config.yml", train_args)
-    return model
+    return model, _data, train_args
 
 
 if __name__ == "__main__":
     # train the auto encoder and encode the dataset
     print("Train the ConvAE")
-    ae: ConvAE = train("./examples/lstm_and_ae/ae_config.yaml")
-    print(f"Latent space shape is {ae.latent_space_shape}")
+    ae, data, ae_args = train("./examples/lstm_and_ae/ae_config.yaml")
 
     print("\nEncode dataset")
-    encoded: np.array = encode_dataset(
-        config.get_args(ae.log_path + "/config.yml"))
+    export = "runs/" + ae_args["model"]["tag"]
+    encode_dataset(train_args=config.get_args(ae.log_path + "/config.yml"),
+                   export_path=export + "/encoded.mat")
 
-    # train the lstm on the encoded dataset, then decode: ae.decode(lstm.predict(x))
+    # train the lstm on the encoded dataset
     print("\nTrain LSTM")
-    lstm: LSTM = train("./examples/lstm_and_ae/lstm_config.yaml")
+    collate_fn = AutoEncoderCollate(ae, device=ae.device).collate_fn()
+    lstm, encoded, lstm_args = train("./examples/lstm_and_ae/lstm_config.yaml", collate_fn)
 
-    # use trained lstm to predict on a dataset
-    print("\nPredict using LSTM/Decoder")
-    sequence, latent_features = ae.latent_space_shape
-    print(encoded.shape)
-    for i in range(0, encoded.shape[1], sequence):
-        x = torch.tensor([encoded[:, i:i + sequence + 1]])
-        x = torch.swapaxes(x, 1, 2)
-        x = lstm.predict(x, as_array=True)
+    print("\nApply LSTM")
+    encoded.apply(lstm)
+    data.save(export + "/prediction.mat")
 
-        if i + sequence + 1 < encoded.shape[1]:
-            encoded[:, i + sequence + 1] = x
-    print(encoded.shape)
+    print("\nDecode prediction")
+    ae_args["dataset"]["custom_path"] = export + "/prediction.mat"
+    decode_dataset(ae_args, data.scale_back, export_path=export + "/decoded.mat")
 
-    decoded = []
-    for i in range(0, encoded.shape[1], sequence):
-        x = torch.tensor([encoded[:, i:i + sequence]])
-        if x.shape[2] == sequence:
-            x = ae.decode(x)
-            decoded += list(x.cpu().detach().numpy()[0])
+    ae_args["dataset"]["custom_path"] = export + "/decoded.mat"
+    ae_args["dataset"]["ae_mode"] = False
+    pred = Dataset(**ae_args["dataset"])
 
-    decoded = np.array(decoded)
-    print(decoded.shape)
+    # visualize the test data
+    visualization = VisualizeDataset(data, name="Input")
+    overlay = VisualizeDataset(pred, name="Prediction", overlay_mode=True)
 
-    fig, ax = plt.subplots()
-    x = np.linspace(0.5, 3.5, len(decoded[:, 0]))
-    ax.scatter(x, decoded[:, 0], c="tab:blue",
-               label="test_1", alpha=0.3, edgecolors='none')
-    ax.scatter(x, decoded[:, 1], c="tab:red",
-               label="test_2", alpha=0.3, edgecolors='none')
+    visualization.set_overlay(overlay)
+    visualization.set_feature(list(range(len(data.label_names))))
+    visualization.visualize(save=f"{export}/predict_on_test.png")
 
-    ax.legend()
-    ax.grid(True)
-
-    plt.show()
+    # visualize first layer of AE
+    ae.use_device("cpu")
+    vis = VisualizeConv(ae)
+    vis.visualize(f"{ae.log_path}/analysis.png")
