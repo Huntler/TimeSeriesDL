@@ -8,8 +8,7 @@ _loss_register = {
     "L1Loss": nn.L1Loss(),
     "BCELoss": nn.BCELoss(),
     "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(),
-    "KLDivLoss": nn.KLDivLoss(),
-    "NLLLoss2d": nn.NLLLoss2d()
+    "KLDivLoss": nn.KLDivLoss()
 }
 
 def get_loss_by_name(name: str) -> nn.Module:
