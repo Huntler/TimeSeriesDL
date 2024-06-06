@@ -47,13 +47,6 @@ result = trainer.test(model)
 # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
 model.save_to_default()
 
-# visualize train data
-train_vis = VisualizeDataset(data, name="Input")
-train_vis.generate_overlay(model)
-
-train_vis.set_feature(list(range(len(data.label_names))))
-train_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
-
 # visualize the test data
 test_vis = VisualizeDataset(test, name="Input")
 test_vis.generate_overlay(model)

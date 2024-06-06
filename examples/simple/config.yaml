@@ -1,5 +1,5 @@
 dataset:
-  sequence_length: 2500
+  sequence_length: 1500
   future_steps: 100
   path: 
     - ./examples/train_1.mat
@@ -7,7 +7,7 @@ dataset:
     - ./examples/train_3.mat
   
 testset:
-  sequence_length: 2500
+  sequence_length: 1500
   future_steps: 100
   path: ./examples/train_4.mat
   
@@ -16,8 +16,8 @@ dataloader:
   shuffle: True
 
 trainer:
-  epochs: 4
-  save_every: 2
+  epochs: 2
+  save_every: 0
 
 loss_suite:
   main: MSELoss
@@ -30,12 +30,12 @@ loss_suite:
 model_name: ConvLSTM
 model_path: None
 model:
-  sequence_length: 2500
+  sequence_length: 1500
   future_steps: 100
   features: 5
   latent_size: 16
-  kernel_size: 25
-  stride: 10
+  kernel_size: 15
+  stride: 5
   padding: 0
   lstm_layers: 2
   hidden_dim: 128

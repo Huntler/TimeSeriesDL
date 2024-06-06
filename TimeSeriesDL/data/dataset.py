@@ -102,6 +102,7 @@ class Dataset(torch.utils.data.Dataset):
         """
         self._mat = [mat]
         self._labels = labels
+        self._shape = self._mat[0].shape
 
         assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
         assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
@@ -155,7 +156,7 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             Tuple[int, int, int]: The shape of one sample as tuple of ints.
         """
-        _, channels,features = self._mat.shape
+        _, channels,features = self._mat[0].shape
         if not label:
             return self._seq, channels, features
         return self._f_seq, channels, features
@@ -197,7 +198,7 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: The sliced array.
         """
-        assert len(self._mat) == 0, "Single-matrix dataset supported only"
+        assert len(self._mat) == 1, "Single-matrix dataset supported only"
         assert start < end, "Start index must be smaller than end index."
         assert start >= 0, "Start index must be >= 0"
         assert end != -1, "End must be well defined."
@@ -213,7 +214,7 @@ class Dataset(torch.utils.data.Dataset):
         Args:
             model (BaseModel): The model to use, needs to be trained.
         """
-        assert len(self._mat) == 0, "Single-matrix dataset supported only"
+        assert len(self._mat) == 1, "Single-matrix dataset supported only"
 
         # create storage of prediction
         full_sequence = np.zeros(self._mat[0].shape)

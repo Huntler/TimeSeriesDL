@@ -138,8 +138,8 @@ class VisualizeDataset:
             sample = model.predict(window)
             full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
 
-        full_sequence = dataset.scale_back(full_sequence)
-        full_sequence = np.swapaxes(full_sequence, 0, 2)
+        if len(full_sequence.shape) <= 2:
+            full_sequence = dataset.scale_back(full_sequence)
 
         new_dataset = Dataset()
         new_dataset.overwrite_content(full_sequence, dataset.label_names)
