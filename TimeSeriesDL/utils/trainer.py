@@ -121,21 +121,24 @@ class ModelTrainer:
 
         # predict all y's of the validation set and append the model's accuracy
         # to the list
-        for x, y_hat in self._testloader:
+        pos = 0
+        for x, y_hat in tqdm(self._testloader):
             x = x.to(model.device)
             y_hat = y_hat.to(model.device)
 
             y = model.predict(x, as_array=False)
 
-            losses = self._loss_suite.calculate(y, y_hat)
+            losses = self._loss_suite.calculate(y, y_hat, pos)
             for name, loss in losses:
                 loss_list = accuracies.get(name, [])
                 loss_list.append(1 - loss)
                 accuracies[name] = loss_list
 
+            pos += x.size(0)
+
         # calculate some statistics based on the data collected
         result = {}
-        for name, accuracy in accuracies:
+        for name, accuracy in accuracies.items():
             result[name] = {
                 "mean": np.mean(np.array(accuracy)),
                 "std": np.mean(np.std(np.array(accuracy))),
