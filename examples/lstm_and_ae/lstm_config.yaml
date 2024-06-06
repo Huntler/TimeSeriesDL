@@ -1,16 +1,33 @@
 dataset:
   d_type: train
-  sequence_length: 12
-  custom_path: ./examples/train_encoded.mat
+  sequence_length: 2500
+  future_steps: 100
+  custom_path: ./examples/train_3.mat
+  
 dataloader:
-  batch_size: 128
+  batch_size: 64
   shuffle: True
+
+trainer:
+  epochs: 1
+  save_every: 0
+
+loss_suite:
+  main: MSELoss
+  log:
+    - L1Loss
+  optimizer: Adam
+  lr: 0.001
+  lr_decay: 0.999
+
 model_name: LSTM
 model_path: None
 model:
+  future_steps: 87
   features: 16
-  lstm_layers: 4
-  hidden_dim: 32
+  lstm_layers: 2
+  hidden_dim: 128
+  tag: AE-LSTM
+
 precision: float32
-train_epochs: 5
 device: mps

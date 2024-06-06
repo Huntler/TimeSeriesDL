@@ -1,22 +1,45 @@
 dataset:
   d_type: train
   sequence_length: 2500
-  custom_path: ./examples/train.mat
+  future_steps: 100
+  custom_path: ./examples/train_3.mat
   ae_mode: True
+  
+testset:
+  d_type: test
+  sequence_length: 2500
+  future_steps: 100
+  custom_path: ./examples/train_4.mat
+  ae_mode: True
+  
 dataloader:
-  batch_size: 512
+  batch_size: 64
   shuffle: True
-model_name: ConvAE
+
+trainer:
+  epochs: 4
+  save_every: 2
+
+loss_suite:
+  main: MSELoss
+  log:
+    - BCELoss
+    - L1Loss
+  optimizer: Adam
+  lr: 0.001
+  lr_decay: 0.999
+
+model_name: ConvVAE
 model_path: None
 model:
+  features: 5
   sequence_length: 2500
-  features: 2
-  extracted_features: 32
-  latent_size: 128
-  kernel_size: 500
-  stride: 5
+  channels: 1
+  extracted_features: 8
+  latent_size: 16
+  kernel_size: 25
+  stride: 10
   padding: 0
-  last_activation: sigmoid
+
 precision: float32
-train_epochs: 100
-device: cuda
+device: mps

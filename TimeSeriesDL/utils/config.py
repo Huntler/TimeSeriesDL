@@ -1,4 +1,5 @@
 """This module contains the config manager."""
+import os
 from typing import Dict
 import yaml
 import torch
@@ -84,6 +85,10 @@ class Config:
         """
         del args["model"]["precision"]
         del args["dataset"]["precision"]
+
+        folder = path.replace(os.path.basename(path), "")
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
         with open(path, "w", encoding="UTF-8") as stream:
             yaml.safe_dump(args, stream)

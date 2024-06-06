@@ -3,9 +3,13 @@
 import re
 from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
+from tqdm import trange
 import scipy.io
+from scipy.io import savemat
 import torch
 import numpy as np
+
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -103,6 +107,20 @@ class Dataset(torch.utils.data.Dataset):
         """
         return self._mat.shape
 
+    def sample_shape(self, label: bool = False) -> Tuple[int, int, int]:
+        """Returns the shape of one sample.
+
+        Args:
+            label (bool): Return the shape of a label
+
+        Returns:
+            Tuple[int, int, int]: The shape of one sample as tuple of ints.
+        """
+        _, channels,features = self._mat.shape
+        if not label:
+            return self._seq, channels, features
+        return self._f_seq, channels, features
+
     @property
     def sample_size(self) -> int:
         """Returns the sample size of the dataset.
@@ -142,6 +160,38 @@ class Dataset(torch.utils.data.Dataset):
         if isinstance(index, np.ndarray) or isinstance(index, int):
             return self._mat[start:end, :, index]
         return self._mat[start:end, :, :]
+
+    def apply(self, model: BaseModel) -> None:
+        """Applys the prediction of the given model on this dataset.
+
+        Args:
+            model (BaseModel): The model to use, needs to be trained.
+        """
+        # create storage of prediction
+        full_sequence = np.zeros(self.shape)
+        full_sequence[0:self._seq, :] = self.slice(0, self._seq)
+
+        # predict based on sliding window
+        print("Apply model on dataset...")
+        for i in trange(0, self.sample_size - self._seq, self._f_seq):
+            window = full_sequence[i:i + self._seq]
+            window = torch.tensor(window, device=model.device, dtype=torch.float32)
+            window = torch.unsqueeze(window, 0)
+            sample = model.predict(window)
+            full_sequence[i + self._seq:i + self._seq + self._f_seq] = sample.detach().cpu().numpy()
+
+        self._mat = full_sequence
+
+    def save(self, path: str) -> None:
+        """Saves the dataset to the provided path as scipy matrix.
+        
+        Args:
+            path (str): Location of the exported matrix.
+        """
+        export = {}
+        for i, label in enumerate(self.label_names):
+            export[label] = self._mat[:, :, i]
+        savemat(path, export)
 
     def __len__(self):
         return max(0, self.sample_size - self._f_seq - self._seq) + 1

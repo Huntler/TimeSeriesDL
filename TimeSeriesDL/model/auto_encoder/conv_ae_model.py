@@ -1,8 +1,6 @@
 """This module contains a basic auto-encoder based on CNN."""
-from typing import Tuple
 import torch
 from torch import nn
-from torch.optim.lr_scheduler import ExponentialLR
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
 from TimeSeriesDL.utils.activations import get_activation_from_string
 from TimeSeriesDL.utils.config import config
@@ -26,14 +24,10 @@ class ConvAE(AutoEncoder):
         stride: int = 1,
         padding: int = 0,
         last_activation: str = "sigmoid",
-        lr: float = 1e-3,
-        lr_decay: float = 9e-1,
-        adam_betas: Tuple[float, float] = (9e-1, 999e-3),
         tag: str = "",
-        log: bool = True,
         precision: torch.dtype = torch.float32,
     ) -> None:
-        super().__init__("ConvAE", tag, log)
+        super().__init__("ConvAE", tag)
 
         # data parameter
         self._features = features
@@ -100,13 +94,6 @@ class ConvAE(AutoEncoder):
             self._padding,
             dtype=self._precision,
         )
-
-        self._loss_suite.add_loss_fn("BCE", torch.nn.BCELoss())
-        self._loss_suite.add_loss_fn("MSE", torch.nn.MSELoss(), main=True)
-        self._loss_suite.add_loss_fn("L1", torch.nn.L1Loss())
-
-        self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
-        self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
 
     @property
     def latent_length(self) -> int:

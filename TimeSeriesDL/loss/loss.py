@@ -1,17 +1,29 @@
 """This module contains various loss functions"""
-from typing import Tuple
-import torch
 from torch import nn
 
 
-def rmse_loss_fn(yhat, y):
-    """Calculates the RMSE loss sqrt(mean(y_hat - y)**2)
+_loss_register = {
+    "MSELoss": nn.MSELoss(),
+    "CELoss": nn.CrossEntropyLoss(),
+    "L1Loss": nn.L1Loss(),
+    "BCELoss": nn.BCELoss(),
+    "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(),
+    "KLDivLoss": nn.KLDivLoss()
+}
+
+def get_loss_by_name(name: str) -> nn.Module:
+    """Get loss function by name.
 
     Args:
-        yhat (torch.tensor): Predicted value.
-        y (torch.tensor): Actual value.
+        name (str): Name of the loss function to be retrieved
 
+    Raises:
+        ValueError: If the loss is unknown
+        
     Returns:
-        torch.tensor: Loss.
+        nn.Module: Loss function
     """
-    return torch.sqrt(torch.mean((yhat - y) ** 2))
+    if name not in _loss_register:
+        raise ValueError(f"Unknown loss {name}")
+
+    return _loss_register[name]

@@ -1,16 +1,31 @@
 """Example usage of the any model."""
 from torch.utils.data import DataLoader
+from TimeSeriesDL.debug.visualize_cnn import VisualizeConv
+from TimeSeriesDL.loss.measurement_suite import LossMeasurementSuite
 from TimeSeriesDL.model import BaseModel
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.utils import config, ModelTrainer
 from TimeSeriesDL.debug.visualize_dataset import VisualizeDataset
 
 # load training arguments (equals example/simple_model.py)
 train_args = config.get_args("./examples/simple/config.yaml")
 
-# create a dataset loader which loads a matplotlib matrix from ./train.mat
+# create the loss suite handling loss calculation for the
+# backpropagation and logging
+loss_suite = LossMeasurementSuite(**train_args["loss_suite"])
+
+# create a dataset loader which loads one or multiple scipy matrices
 data = Dataset(**train_args["dataset"])
 dataloader = DataLoader(data, **train_args["dataloader"])
+
+# create a testset, used to optimize parameters of the model
+test = Dataset(**train_args["testset"])
+testloader = DataLoader(test, **train_args["dataloader"])
+
+trainer = ModelTrainer(**train_args["trainer"])
+trainer.set_dataset(dataloader)
+trainer.set_testset(testloader)
+trainer.set_loss_suite(loss_suite)
 
 # create a model based on what is defined in the config
 # to do so, a model needs to be registered using config.register_model()
@@ -18,54 +33,35 @@ model_name = train_args["model_name"]
 model: BaseModel = config.get_model(model_name)(**train_args["model"])
 model.use_device(train_args["device"])
 
-# train the model on the dataset for 5 epochs and log the progress in a CLI
-# to review the model's training performance, open TensorBoard in a browser
-model.learn(train=dataloader, epochs=train_args["train_epochs"])
+# also, store a modified copy of the training arguments containing the model path
+# this makes comparisons between multiple experiments easier
+train_args["model_path"] = model.log_path + "/models/model.torch"
+config.store_args(f"{model.log_path}/config.yml", train_args)
+
+# train the model using the cvonfigured trainer
+trainer.train(model)
+
+# test the model
+result = trainer.test(model)
 
 # save the model to its default location 'runs/{time_stamp}/model_SimpleModel.torch'
 model.save_to_default()
 
-# also, store a modified copy of the training arguments containing the model path
-# this makes comparisons between multiple experiments easier<
-train_args["model_path"] = model.log_path + "/model.torch"
-config.store_args(f"{model.log_path}/config.yml", train_args)
+# visualize train data
+train_vis = VisualizeDataset(data, name="Input")
+train_vis.generate_overlay(model)
 
-import torch
-import numpy as np
-from scipy.io import savemat
-from tqdm import trange
+train_vis.set_feature(list(range(len(data.label_names))))
+train_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
 
-# create storage of prediction
-window_len = train_args["dataset"]["sequence_length"]
-f_len = train_args["dataset"]["future_steps"]
-full_sequence = np.zeros(data.shape)
-full_sequence[0:window_len, :] = data.slice(0, window_len)
+# visualize the test data
+test_vis = VisualizeDataset(test, name="Input")
+test_vis.generate_overlay(model)
 
-# predict based on sliding window
-for i in trange(0, data.sample_size - window_len, f_len):
-    window = full_sequence[i:i + window_len]
-    window = torch.tensor(window, device=train_args["device"], dtype=torch.float32)
-    window = torch.unsqueeze(window, 0)
-    sample = model.predict(window)
-    full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
+test_vis.set_feature(list(range(len(data.label_names))))
+test_vis.visualize(save=f"{model.log_path}/predict_on_test.png")
 
-# remove the channel and prepare to save the predicted data
-full_sequence = np.squeeze(full_sequence, 1)
-full_sequence = data.scale_back(full_sequence)
-full_sequence = np.swapaxes(full_sequence, 0, 1)
-
-# save prediction using the label names from the original dataset
-export = {}
-for i, label_name in enumerate(data.label_names):
-    export[f"pred_feature_{i}"] = list(full_sequence[i, :])
-savemat("examples/simple/prediction.mat", export)
-
-# load dataset without normalization and compare against prediction
-data = Dataset(normalize=False, **train_args["dataset"])
-predicted = Dataset(normalize=False, custom_path="examples/simple/prediction.mat")
-input_vis = VisualizeDataset(data, name="Input")
-output_vis = VisualizeDataset(predicted, name="Predicted", overlay_mode=True)
-
-input_vis.set_feature([0, 1])
-input_vis.set_overlay(output_vis)
-input_vis.visualize(save="examples/simple/comparioson.png")
+# visualize the model
+model.use_device("cpu")
+vis = VisualizeConv(model)
+vis.visualize(f"{model.log_path}/analysis.png")

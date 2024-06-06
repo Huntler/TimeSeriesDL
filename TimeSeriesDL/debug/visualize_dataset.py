@@ -1,9 +1,14 @@
 """This module visualizes a dataset's data."""
 import math
+import os
 from typing import List, Tuple
 import matplotlib.pyplot as plt
+from scipy.io import savemat
+import torch
 import numpy as np
+from tqdm import trange
 from TimeSeriesDL.data.dataset import Dataset
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 
@@ -41,7 +46,8 @@ class VisualizeDataset:
     """This class visualizes a dataset, with the ability to overwrite label names, select features
     to visualizes, and possibility to overlay a second dataset.
     """
-    def __init__(self, dataset: Dataset, name: str = None, overlay_mode: bool = False) -> None:
+    def __init__(self, dataset: Dataset, name: str = None, overlay_mode: bool = False,
+                 scale_back: bool = False) -> None:
         """Initializes a visualization object to show insights into a dataset.
 
         Args:
@@ -50,8 +56,10 @@ class VisualizeDataset:
             name (str, optional): The name of the dataset. Defaults to the dataset file name.
             overlay_mode (bool, optional): This object should be used as an overlay.
             Defaults to False.
+            scale_back (bool): Scales the dataset back if it was normalized. Defaults to False.
         """
         self._dataset = dataset
+        self._scale_back = scale_back
         self._name = name if name else self._dataset.d_type
         assert len(self._dataset.shape) == 3, "Expected dataset to have two dimensions."
 
@@ -106,6 +114,48 @@ class VisualizeDataset:
         assert getattr(overlay, 'is_overlay', False), "Expected overlay to have 'is_overlay' set to True"
         self._overlay = overlay
 
+    def generate_overlay(self, model: BaseModel, dataset: Dataset = None) -> None:
+        """Generates an overlay for this visualized dataset, which will be plotted in
+        same graph. This method can only be called on a normal object (i.e., not an
+        overlay itself). If you try to generate an overlay for another overlay, this
+        will raise an assertion error.
+        
+        Args:
+            model (BaseModel): The model to generate the overlay for.
+            dataset (Dataset): The dataset on which the model predicts. Defaults to None.
+        """
+        dataset = dataset if dataset else self._dataset
+        # create storage of prediction
+        window_len, _, _ = dataset.sample_shape()
+        f_len, _, _ = dataset.sample_shape(label=True)
+        full_sequence = np.zeros(dataset.shape)
+        full_sequence[0:window_len, :] = dataset.slice(0, window_len)
+
+        # predict based on sliding window
+        print("Predicting...")
+        for i in trange(0, dataset.sample_size - window_len, f_len):
+            window = full_sequence[i:i + window_len]
+            window = torch.tensor(window, device=model.device, dtype=torch.float32)
+            window = torch.unsqueeze(window, 0)
+            sample = model.predict(window)
+            full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
+
+        # remove the channel and prepare to save the predicted data
+        full_sequence = np.squeeze(full_sequence, 1)
+        full_sequence = dataset.scale_back(full_sequence)
+        full_sequence = np.swapaxes(full_sequence, 0, 1)
+
+        # save prediction using the label names from the original dataset
+        export = {}
+        for i, label_name in enumerate(dataset.label_names):
+            export[label_name] = list(full_sequence[i, :])
+        savemat("temp.mat", export)
+
+        # load saved matrix as a dataset and delete the temporary file
+        dataset = Dataset(custom_path="temp.mat")
+        os.remove("temp.mat")
+
+        self._overlay = VisualizeDataset(dataset, name="Predicted", overlay_mode=True)
 
     def set_feature(self, feature: int | List[int], label: str | List[str] = None) -> None:
         """Selects one or multiple features to be shown on the graph.
@@ -136,8 +186,8 @@ class VisualizeDataset:
             return num_features, 1
 
         h, w = max_h, math.ceil(num_features / max_h)
-        if (h * w - num_features) % w == 0:
-            return h - (h * w - num_features) // 2, w
+        if h * w - num_features > w:
+            return h - ((h * w - num_features) % w), w
         return h, w
 
     def visualize(self, start: int = 0, end: int = -1, size: int = 3, save: str = None) -> None:
@@ -161,9 +211,15 @@ class VisualizeDataset:
         _overlay_data = None
         if self._overlay:
             _overlay_data = self._overlay.dataset.slice(start, end, self._feature)
+            if self._scale_back:
+                _overlay_data = self._overlay.dataset.scale_back(_overlay_data[:, 0, :])
+                _overlay_data = np.expand_dims(_overlay_data, 1)
 
         # slice the dataset as required to view start/end/selected features
         data = self._dataset.slice(start, end, self._feature)
+        if self._scale_back:
+            data = self._dataset.scale_back(data[:, 0, :])
+            data = np.expand_dims(data, 1)
 
         # setup graph and layout
         grid = self._get_grid(4, len(self._feature))

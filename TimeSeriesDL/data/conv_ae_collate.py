@@ -35,6 +35,9 @@ class AutoEncoderCollate:
             x = self._ae.encode(x)
             y = self._ae.encode(y)
 
+            x = torch.squeeze(x, 2)
+            y = torch.squeeze(y, 2)
+
             x = torch.swapaxes(x, 1, 2)
             y = torch.swapaxes(y, 1, 2)
 
