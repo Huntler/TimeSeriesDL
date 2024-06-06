@@ -122,7 +122,7 @@ class ModelTrainer:
         # predict all y's of the validation set and append the model's accuracy
         # to the list
         pos = 0
-        for x, y_hat in tqdm(self._testloader):
+        for x, y_hat in tqdm(self._testloader, desc="Test"):
             x = x.to(model.device)
             y_hat = y_hat.to(model.device)
 
