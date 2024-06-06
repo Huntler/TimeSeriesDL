@@ -24,12 +24,18 @@ print(f"Generating version {version}")
 
 d = {}
 if version == 0:
-    # generate the dataset
-    x, y1 = functions.test_1(size=samples)
-    x, y2 = functions.test_2(size=samples)
+    # Generate a sequence of x values
+    x = np.linspace(0, 10, samples)
+    f = np.power(x, 1.001)
 
-    # store the dataset
-    d = {"train_1": y1, "train_2": y2}
+    # Calculate y values for each function
+    y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5) * f
+    y2 = np.exp(y1) * f
+    y3 = np.sin(y1*2) * f
+    y4 = np.sin(np.exp(x/2)) * f
+    y5 = np.log(x + 1) * f
+
+    d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
     savemat(path, d)
 
 elif version == 1:
@@ -47,9 +53,9 @@ elif version == 1:
     savemat(path, d)
 
 elif version == 2:
-    # same as version 1 but shifted by x=5
+    # same as version 1 but shifted by x=1
     # Generate a sequence of x values
-    x = np.linspace(1, 1, samples)
+    x = np.linspace(1, 11, samples)
 
     # Calculate y values for each function
     y1 = (x**2 + 2*x + 1) * np.exp(-x*0.5)
