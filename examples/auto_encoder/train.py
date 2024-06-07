@@ -48,18 +48,20 @@ result = trainer.test(model)
 model.save_to_default()
 
 # visualize train data
-train_vis = VisualizeDataset(data, name="Input")
-train_vis.generate_overlay(model)
+if data.num_matrices == 1:
+    train_vis = VisualizeDataset(data, name="Input")
+    train_vis.generate_overlay(model)
 
-train_vis.set_feature(list(range(len(data.label_names))))
-train_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
+    train_vis.set_feature(list(range(len(data.label_names))))
+    train_vis.visualize(save=f"{model.log_path}/predict_on_train.png")
 
 # visualize the test data
-test_vis = VisualizeDataset(test, name="Input")
-test_vis.generate_overlay(model)
+if test.num_matrices == 1:
+    test_vis = VisualizeDataset(test, name="Input")
+    test_vis.generate_overlay(model)
 
-test_vis.set_feature(list(range(len(data.label_names))))
-test_vis.visualize(save=f"{model.log_path}/predict_on_test.png")
+    test_vis.set_feature(list(range(len(data.label_names))))
+    test_vis.visualize(save=f"{model.log_path}/predict_on_test.png")
 
 # visualize the model
 model.use_device("cpu")

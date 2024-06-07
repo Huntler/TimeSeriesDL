@@ -81,7 +81,6 @@ class Dataset(torch.utils.data.Dataset):
 
         assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
         assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
-        print("Dataset shape:", self.shape)
 
     @property
     def label_names(self) -> List[str]:
@@ -91,6 +90,20 @@ class Dataset(torch.utils.data.Dataset):
             List[str]: The list of label names.
         """
         return self._labels
+
+    @property
+    def num_matrices(self) -> int:
+        """Property describes the number of matrices load in this dataset. Useful, as not
+        all operations can be done on a list of matrices and require a single-matrix
+        dataset to work.
+
+        Returns:
+            int: The number of matrices in this dataset.
+        """
+        if not self._mat:
+            return 0
+
+        return len(self._mat)
 
     def overwrite_content(self, mat: np.array, labels: List[str]) -> None:
         """Overwrites the matrix of this dataset. Make sure that the shape of the new
