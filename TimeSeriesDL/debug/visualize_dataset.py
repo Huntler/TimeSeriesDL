@@ -1,9 +1,7 @@
 """This module visualizes a dataset's data."""
 import math
-import os
 from typing import List, Tuple
 import matplotlib.pyplot as plt
-from scipy.io import savemat
 import torch
 import numpy as np
 from tqdm import trange
@@ -60,7 +58,7 @@ class VisualizeDataset:
         """
         self._dataset = dataset
         self._scale_back = scale_back
-        self._name = name if name else self._dataset.d_type
+        self._name = name if name else "Dataset"
         assert len(self._dataset.shape) == 3, "Expected dataset to have two dimensions."
 
         self._overlay: VisualizeDataset = None
@@ -140,22 +138,13 @@ class VisualizeDataset:
             sample = model.predict(window)
             full_sequence[i + window_len:i + window_len + f_len] = sample.detach().cpu().numpy()
 
-        # remove the channel and prepare to save the predicted data
-        full_sequence = np.squeeze(full_sequence, 1)
-        full_sequence = dataset.scale_back(full_sequence)
-        full_sequence = np.swapaxes(full_sequence, 0, 1)
+        if len(full_sequence.shape) <= 2:
+            full_sequence = dataset.scale_back(full_sequence)
 
-        # save prediction using the label names from the original dataset
-        export = {}
-        for i, label_name in enumerate(dataset.label_names):
-            export[label_name] = list(full_sequence[i, :])
-        savemat("temp.mat", export)
+        new_dataset = Dataset()
+        new_dataset.overwrite_content(full_sequence, dataset.label_names)
 
-        # load saved matrix as a dataset and delete the temporary file
-        dataset = Dataset(custom_path="temp.mat")
-        os.remove("temp.mat")
-
-        self._overlay = VisualizeDataset(dataset, name="Predicted", overlay_mode=True)
+        self._overlay = VisualizeDataset(new_dataset, name="Predicted", overlay_mode=True)
 
     def set_feature(self, feature: int | List[int], label: str | List[str] = None) -> None:
         """Selects one or multiple features to be shown on the graph.

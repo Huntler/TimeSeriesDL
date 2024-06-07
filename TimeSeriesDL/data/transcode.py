@@ -1,7 +1,6 @@
 """Encodes a dataset and stores it."""
 from typing import Callable, Dict, List, Tuple
 from tqdm import tqdm
-from scipy.io import savemat
 import torch
 import numpy as np
 from TimeSeriesDL.data import Dataset
@@ -59,82 +58,83 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, AutoEncoder]:
     return data, ae
 
 
-def encode_dataset(
-    train_args: Dict, export_path: str = "./examples/train_encoded.mat"
-) -> np.array:
+def encode_dataset(data: Dataset, model: AutoEncoder) -> Dataset:
     """Loads a trained ConvAE using the config dictionary. Then encodes the
     dataset specified in the dictionary and stores it to 'export_path'.
 
     Args:
-        train_args (Dict): The config of a trained ConvAE.
-        export_path (str): The path of the encoded dataset.
+        data (Dataset): The dataset to encode.
+        model (AutoEncoder): The trained ConvAE model to encode with.
+    
+    Returns:
+        Dataset: The encoded dataset.
     """
-    data, ae = load(train_args)
+    sequence_length, _, _ = data.sample_shape()
 
     encoded = []
-    for i in tqdm(range(0, len(data), train_args["dataset"]["sequence_length"])):
+    for i in tqdm(range(0, len(data), sequence_length)):
         # get the data as tensor
         x, _ = data[i]
-        x = torch.unsqueeze(torch.tensor(x, dtype=ae.precision), 0)
+        x = torch.unsqueeze(torch.tensor(x, dtype=model.precision), 0)
 
         # encode the data and unwrap the batch
-        x = ae.encode(x, as_array=True)
+        x = model.encode(x, as_array=True)
         x = np.swapaxes(x[:, :, 0, :], 2, 1)
         x = list(x[0, :, :])
         encoded += x
 
     # save the encoded dataset
     encoded = np.array(encoded)
-    encoded = np.swapaxes(encoded, 0, 1)
+    encoded = np.expand_dims(encoded, 1)
 
-    export = {}
-    for i in range(encoded.shape[0]):
-        export[f"encoded_feature_{i}"] = list(encoded[i, :])
-    savemat(export_path, export)
+    labels = [f"enc_{i}" for i in encoded.shape[-1]]
 
-    return encoded
+    dataset = Dataset()
+    dataset.overwrite_content(encoded, labels)
+
+    return dataset
 
 
 def decode_dataset(
-        train_args: Dict,
+        data: Dataset,
+        model: AutoEncoder,
         scaler: Callable,
-        labels: List[str] = None,
-        export_path: str = "./examples/train_decoded.mat") -> None:
+        labels: List[str] = None) -> Dataset:
     """Loads a trained ConvAE using the config dictionary. Then decodes the
     dataset specified in the dictionary and stores it to 'export_path'.
 
     Args:
-        train_args (Dict): The config of a trained ConvAE.
+        data (Dataset): The dataset to decode.
+        model (AutoEncoder): The trained ConvAE model to decode with.
         scaler (Callable): The scaleback function of the original dataset.
         labels (List[str]): Original labels for each feature. Defaults to None.
-        export_path (str): The path of the decoded dataset.
+    
+    Returns:
+        Dataset: The encoded dataset.
     """
-    data, ae = load(train_args, decode=True)
+    data.set_sequence(model.latent_length)
 
     decoded = []
-    for i in tqdm(range(0, len(data), ae.latent_length)):
+    for i in tqdm(range(0, len(data), model.latent_length)):
         # get the data as tensor, apply 0-padding as sequence might be to small
-        x = np.zeros((1, ae.latent_length, 1, data.shape[-1]))
+        x = np.zeros((1, model.latent_length, 1, data.shape[-1]))
         d, _ = data[i]
         x[0, :, :d.shape[0], :] = d
         x = np.swapaxes(x, 1, 3)
-        x = torch.tensor(x, dtype=ae.precision)
+        x = torch.tensor(x, dtype=model.precision)
 
         # encode the data and unwrap the batch
-        x = ae.decode(x)
-        x = scaler(list(x.cpu().detach().numpy()[0, :, 0, :]))
+        x = model.decode(x)
+        x = scaler(list(x.cpu().detach().numpy()[0, :, :, :]))
         decoded += list(x)
 
     # save the encoded dataset
     decoded = np.array(decoded)
-    decoded = np.swapaxes(decoded, 0, 1)
 
     if not labels:
-        labels = [f"decoded_{i}" for i in range(decoded.shape[0])]
+        labels = [f"dec_{i}" for i in range(decoded.shape[0])]
 
-    export = {}
-    for i in range(decoded.shape[0]):
-        export[labels[i]] = list(decoded[i, :])
-    savemat(export_path, export)
+    dataset = Dataset()
+    dataset.overwrite_content(decoded, labels)
 
-    return decoded
+    return dataset

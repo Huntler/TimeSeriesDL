@@ -1,21 +1,22 @@
 dataset:
-  d_type: train
   sequence_length: 2500
   future_steps: 100
-  custom_path: ./examples/train_3.mat
+  path: 
+    - ./examples/train_1.mat
+    - ./examples/train_2.mat
+    - ./examples/train_3.mat
   
 testset:
-  d_type: test
   sequence_length: 2500
   future_steps: 100
-  custom_path: ./examples/train_4.mat
+  path: ./examples/train_4.mat
   
 dataloader:
   batch_size: 64
   shuffle: True
 
 trainer:
-  epochs: 4
+  epochs: 10
   save_every: 2
 
 loss_suite:

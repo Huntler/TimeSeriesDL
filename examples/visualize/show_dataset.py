@@ -22,7 +22,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     train_args = config.get_args(args.config)
     if args.compare_to:
-        train_args["dataset"]["custom_path"] = args.compare_to
+        train_args["dataset"]["path"] = args.compare_to
 
     # load the dataset and put it into the visualizer
     data = Dataset(**train_args["dataset"])
@@ -30,7 +30,6 @@ if __name__ == "__main__":
 
     # load the second dataset to compare to the already loaded one if the argument is provided
     if args.compare_to:
-        train_args["model"]["log"] = False
         model: BaseModel = config.get_model(train_args["model_name"])(**train_args["model"])
         model.load(train_args["model_path"])
 
