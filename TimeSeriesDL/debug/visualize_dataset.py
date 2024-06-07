@@ -131,7 +131,7 @@ class VisualizeDataset:
 
         # predict based on sliding window
         print("Predicting...")
-        for i in trange(0, dataset.sample_size - window_len, f_len):
+        for i in trange(0, dataset.shape[0] + f_len, f_len):
             window = full_sequence[i:i + window_len]
             window = torch.tensor(window, device=model.device, dtype=torch.float32)
             window = torch.unsqueeze(window, 0)
