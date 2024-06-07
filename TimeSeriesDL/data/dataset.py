@@ -46,41 +46,28 @@ class Dataset(torch.utils.data.Dataset):
         self._file = path if isinstance(path, list) else [path]
         self._mat = None
         self._labels = None
-        self._shape = None
         self._load_data()
+        self._shape = self.shape
 
         # normalize the dataset between values of o to 1
         self._scaler = None
         if normalize:
             for i, mat in enumerate(self._mat):
                 self._scaler = MinMaxScaler(feature_range=bounds)
-                self._scaler = self._scaler.fit(mat)
-                self._mat[i] = self._scaler.transform(mat)
-
-        # calculate the matrix shape
-        shape = list(self._mat[0].shape)
-        for i in range(1, len(self._mat)):
-            shape[0] += self._mat[i].shape[0]
-            assert self._mat[0].shape[1:] == self._mat[i].shape[1:], \
-                "The shape of the dataset is not consistent"
-        self._shape = tuple(shape)
-
-        # add a dimension to have one channel per feature/sample
-        if len(self.shape) != 3:
-            self._mat = [np.expand_dims(m, 1) for m in self._mat]
-            self._shape = (self._shape[0], 1, self._shape[1])
+                self._scaler = self._scaler.fit(mat[:, 0, :])
+                self._mat[i][:, 0, :] = self._scaler.transform(mat[:, 0, :])
 
         # pre-compute which index corresponds to which matrix
         self._max_indices = []
         prev_size = 0
         for m in self._mat:
-            l = len(m) - (self._f_seq + self._seq)
+            l = len(m) - self._seq - self._f_seq + 1
             self._max_indices.append(prev_size + l)
             prev_size += l
         self._max_indices = np.array(self._max_indices)
 
-        assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
-        assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
+        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
+        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
 
     @property
     def label_names(self) -> List[str]:
@@ -115,10 +102,10 @@ class Dataset(torch.utils.data.Dataset):
         """
         self._mat = [mat]
         self._labels = labels
-        self._shape = self._mat[0].shape
+        self._shape = self.shape
 
-        assert len(self.shape) == 3, f"Expect dataset dimensions to be 3, got {len(self.shape)}"
-        assert self.shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self.shape[1]}"
+        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
+        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
 
     def _load_data(self) -> None:
         self._mat = []
@@ -143,6 +130,10 @@ class Dataset(torch.utils.data.Dataset):
             self._mat.append(mat)
             self._labels = labels
 
+        # add a dimension to have one channel per feature/sample
+        if len(self._mat[0].shape) != 3:
+            self._mat = [np.expand_dims(m, 1) for m in self._mat]
+
     def set_sequence(self, length: int) -> None:
         """Sets the sequence length of the samples output. Runtime is O(1).
 
@@ -153,12 +144,20 @@ class Dataset(torch.utils.data.Dataset):
 
     @property
     def shape(self) -> Tuple[int]:
-        """Returns the shape of the dataset. Runtime is O(1).
+        """Returns the shape of the dataset. Runtime is O(n_matrices).
 
         Returns:
             Tuple[int]: The dataset's shape as tuple of ints.
         """
-        return self._shape
+
+        # calculate the matrix shape
+        shape = list(self._mat[0].shape)
+        shape[0] -= self._seq + self._f_seq - 1
+        for i in range(1, len(self._mat)):
+            shape[0] += (self._mat[i].shape[0] - self._seq - self._f_seq + 1)
+            assert self._mat[0].shape[1:] == self._mat[i].shape[1:], \
+                "The shape of the dataset is not consistent"
+        return tuple(shape)
 
     def sample_shape(self, label: bool = False) -> Tuple[int, int, int]:
         """Returns the shape of one sample. Runtime is O(1).
@@ -173,15 +172,6 @@ class Dataset(torch.utils.data.Dataset):
         if not label:
             return self._seq, channels, features
         return self._f_seq, channels, features
-
-    @property
-    def sample_size(self) -> int:
-        """Returns the sample size of the dataset. Runtime is O(1).
-
-        Returns:
-            int: The dataset's sample size.
-        """
-        return self.shape[0]
 
     def scale_back(self, data: List):
         """Scales the given data back using the inverse scaler. Runtime is O(1).
@@ -235,7 +225,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # predict based on sliding window
         print("Apply model on dataset...")
-        for i in trange(0, self.sample_size - self._seq, self._seq):
+        for i in trange(0, len(self) + self._f_seq, self._seq):
             window = full_sequence[i:i + self._seq]
             window = torch.tensor(window, device=model.device, dtype=torch.float32)
             window = torch.unsqueeze(window, 0)
@@ -259,7 +249,7 @@ class Dataset(torch.utils.data.Dataset):
         savemat(path, export)
 
     def __len__(self):
-        return max(0, self.sample_size - (self._f_seq + self._seq) * len(self._mat)) + 1
+        return self.shape[0]
 
     def __getitem__(self, index):
         assert 0 <= index < len(self), f"Invalid index {index}"
