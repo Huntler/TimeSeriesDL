@@ -33,5 +33,6 @@ jobs:
         pip install .
     - name: Run Unittests
       run: |
+        conda activate timeseries-dl
         conda info
         python -m unittest discover -s tests -v
