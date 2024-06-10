@@ -1,5 +1,6 @@
 # TimeSeriesDL: Predicting Future Curvature of Time Series
 [![Python Package using Conda](https://github.com/Huntler/TimeSeriesDL/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/Huntler/TimeSeriesDL/actions/workflows/python-package-conda.yml)
+
 Repository based on the first assignment of the deep learning course at Universiteit Maastricht. The TimeSeriesDL framework enables rapid model prototyping of time series prediction.
 
 ## Setup
