@@ -163,6 +163,22 @@ class TestDataset(unittest.TestCase):
         self.assertTrue((to_test_x == expected_x).all(), f"test {data_idx} vs expected {data_idx}")
         self.assertTrue((to_test_y == expected_y).all())
 
+    def test_multi_get_transition(self):
+        """
+        Test if the transition between matrices results in consistent returns.
+        """
+        data_idx = length - sequence - future - 5
+        dataset = Dataset(sequence_length=sequence, future_steps=future, path=paths)
+        expected_x, expected_y = dataset[data_idx]
+        for i in range(1, (sequence + future) * 2):
+            to_test_x, to_test_y = dataset[data_idx + i]
+
+            msg = f"{length} ({sequence}, {future}): {data_idx + i - 1} vs {data_idx + i}"
+            self.assertTupleEqual(to_test_x.shape, expected_x.shape, msg)
+            self.assertTupleEqual(to_test_y.shape, expected_y.shape, msg)
+
+            expected_x, expected_y = to_test_x, to_test_y
+
     def test_overwrite_content(self):
         """
         Tests if overwriting the content of a dataset changes the shape as well.
