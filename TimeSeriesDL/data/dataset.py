@@ -188,10 +188,18 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: Data scaled to input range.
         """
+        input_shape = data.shape
         assert len(self._mat) == 1, "Revert scaling is only supported when one dataset is loaded"
+        if len(input_shape) == 3:
+            assert data.shape[1] == 1, f"Can not scale back on multi-channel data. {data.shape} got {data.shape[1]}"
+            data = data[:, 0, :]
+
         if self._scaler:
             data = np.array(data, dtype=self._precision)
-            return self._scaler.inverse_transform(data)
+            data = self._scaler.inverse_transform(data)
+            if len(input_shape) == 3:
+                data = np.expand_dims(data, 1)
+            return data
 
         print("Warning, no scaler defined.")
         return data
