@@ -33,4 +33,5 @@ jobs:
         pip install .
     - name: Run Unittests
       run: |
+        conda info
         python -m unittest discover -s tests -v
