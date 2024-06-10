@@ -194,6 +194,8 @@ class TestDataset(unittest.TestCase):
 
         self.assertTupleEqual((_length, 1, _feature), dataset.shape)
         self.assertListEqual(labels, dataset.label_names)
+        self.assertTupleEqual((sequence, 1, _feature), dataset[0][0].shape)
+        self.assertTupleEqual((future, 1, _feature), dataset[0][1].shape)
 
 
 if __name__ == "__main__":
