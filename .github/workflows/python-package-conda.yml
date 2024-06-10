@@ -33,4 +33,4 @@ jobs:
         python setup.py install
     - name: Run Unittests
       run: |
-        sh ./run_tests.sh
+        python -m unittest discover -s tests -v
