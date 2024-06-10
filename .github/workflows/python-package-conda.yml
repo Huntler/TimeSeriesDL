@@ -20,7 +20,7 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda env update --file environment-cpu.yml --name base
+        conda env update --file environment-cpu.yml --name timeseries-dl
     - name: Lint with flake8
       run: |
         conda install flake8
@@ -30,7 +30,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Build Package
       run: |
-        conda activate
+        conda activate timeseries-dl
         python setup.py install
     - name: Run Unittests
       run: |
