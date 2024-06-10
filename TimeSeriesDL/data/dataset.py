@@ -58,6 +58,14 @@ class Dataset(torch.utils.data.Dataset):
                 self._mat[i][:, 0, :] = self._scaler.transform(mat[:, 0, :])
 
         # pre-compute which index corresponds to which matrix
+        self._precompute_indices()
+
+        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
+        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
+
+    def _precompute_indices(self) -> None:
+        """Method pre-computes the indices for eventual sub-matrices.
+        """
         self._max_indices = []
         prev_size = 0
         for m in self._mat:
@@ -65,9 +73,6 @@ class Dataset(torch.utils.data.Dataset):
             self._max_indices.append(prev_size + l)
             prev_size += l
         self._max_indices = np.array(self._max_indices)
-
-        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
-        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
 
     @property
     def label_names(self) -> List[str]:
@@ -103,6 +108,7 @@ class Dataset(torch.utils.data.Dataset):
         self._mat = [mat]
         self._labels = labels
         self._shape = self.shape
+        self._precompute_indices()
 
         assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
         assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
