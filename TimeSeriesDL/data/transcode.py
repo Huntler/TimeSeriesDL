@@ -1,6 +1,6 @@
 """Encodes a dataset and stores it."""
 from typing import Callable, Dict, List, Tuple
-from tqdm import tqdm
+from tqdm import trange
 import torch
 import numpy as np
 from TimeSeriesDL.data import Dataset
@@ -58,38 +58,38 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, AutoEncoder]:
     return data, ae
 
 
-def encode_dataset(data: Dataset, model: AutoEncoder) -> Dataset:
+def encode_dataset(data: Dataset, model: AutoEncoder, verbose: bool = False) -> Dataset:
     """Loads a trained ConvAE using the config dictionary. Then encodes the
     dataset specified in the dictionary and stores it to 'export_path'.
 
     Args:
         data (Dataset): The dataset to encode.
         model (AutoEncoder): The trained ConvAE model to encode with.
+        verbose (bool): Show progress bar. Defaults to False.
     
     Returns:
         Dataset: The encoded dataset.
     """
+    assert data.num_matrices == 1, "Single-matrix dataset expected."
     sequence_length, _, _ = data.sample_shape()
+    future_steps, _, _ = data.sample_shape(True)
 
     encoded = []
-    for i in tqdm(range(0, len(data), sequence_length)):
+    loop = trange if verbose else range
+    for i in loop(0, len(data), sequence_length):
         # get the data as tensor
-        x, _ = data[i]
+        x = data.slice(i, i + sequence_length)
         x = torch.unsqueeze(torch.tensor(x, dtype=model.precision), 0)
 
         # encode the data and unwrap the batch
         x = model.encode(x, as_array=True)
-        x = np.swapaxes(x[:, :, 0, :], 2, 1)
-        x = list(x[0, :, :])
-        encoded += x
+        encoded += list(x[0])
 
     # save the encoded dataset
     encoded = np.array(encoded)
-    encoded = np.expand_dims(encoded, 1)
 
-    labels = [f"enc_{i}" for i in encoded.shape[-1]]
-
-    dataset = Dataset()
+    labels = [f"enc_{i}" for i in range(encoded.shape[-1])]
+    dataset = Dataset(sequence_length=sequence_length, future_steps=future_steps)
     dataset.overwrite_content(encoded, labels)
 
     return dataset
@@ -98,34 +98,40 @@ def encode_dataset(data: Dataset, model: AutoEncoder) -> Dataset:
 def decode_dataset(
         data: Dataset,
         model: AutoEncoder,
-        scaler: Callable,
-        labels: List[str] = None) -> Dataset:
+        scaler: Callable = None,
+        labels: List[str] = None,
+        verbose: bool = False) -> Dataset:
     """Loads a trained ConvAE using the config dictionary. Then decodes the
     dataset specified in the dictionary and stores it to 'export_path'.
 
     Args:
         data (Dataset): The dataset to decode.
         model (AutoEncoder): The trained ConvAE model to decode with.
-        scaler (Callable): The scaleback function of the original dataset.
+        scaler (Callable): The scaleback function of the original dataset. Defaults to None.
         labels (List[str]): Original labels for each feature. Defaults to None.
+        verbose (bool): Show progress bar. Defaults to False.
+
     
     Returns:
         Dataset: The encoded dataset.
     """
+    assert data.num_matrices == 1, "Single-matrix dataset expected."
     data.set_sequence(model.latent_length)
 
     decoded = []
-    for i in tqdm(range(0, len(data), model.latent_length)):
-        # get the data as tensor, apply 0-padding as sequence might be to small
-        x = np.zeros((1, model.latent_length, 1, data.shape[-1]))
-        d, _ = data[i]
-        x[0, :, :d.shape[0], :] = d
-        x = np.swapaxes(x, 1, 3)
-        x = torch.tensor(x, dtype=model.precision)
+    loop = trange if verbose else range
+    for i in loop(0, len(data), model.latent_length):
+        x = data.slice(i, i + model.latent_length)
+
+        # add batch and reshape the input as it was after encoding
+        x = torch.unsqueeze(torch.tensor(x, dtype=model.precision), 0)
+        x: torch.tensor = torch.swapaxes(x, 1, 3)
+        x: torch.tensor = torch.swapaxes(x, 1, 2)
 
         # encode the data and unwrap the batch
-        x = model.decode(x)
-        x = scaler(list(x.cpu().detach().numpy()[0, :, :, :]))
+        x = model.decode(x, as_array=True)[0, :, :, :]
+        if scaler:
+            x = scaler(x)
         decoded += list(x)
 
     # save the encoded dataset
@@ -134,7 +140,7 @@ def decode_dataset(
     if not labels:
         labels = [f"dec_{i}" for i in range(decoded.shape[0])]
 
-    dataset = Dataset()
+    dataset = Dataset(sequence_length=model.latent_length)
     dataset.overwrite_content(decoded, labels)
 
     return dataset
