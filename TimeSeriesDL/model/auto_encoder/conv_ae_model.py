@@ -115,6 +115,9 @@ class ConvAE(AutoEncoder):
         x = torch.relu(x)
 
         if as_array:
+            # change output to match the input's pattern: batch, samples, channels, features
+            x = torch.swapaxes(x, 1, 2)
+            x = torch.swapaxes(x, 1, 3)
             return x.cpu().detach().numpy()
         return x
 
