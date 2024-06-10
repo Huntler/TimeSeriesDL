@@ -16,14 +16,13 @@ with open("README.md", "r", encoding="UTF-8") as file:
 
 # get requirements from conda environment
 os.system("pip freeze > requirements.txt")
-conda_list = subprocess.run(['conda', 'list'], stdout=PIPE, stderr=PIPE, universal_newlines=True)
 
 requirements = []
 with open("requirements.txt", "r", encoding="UTF-8") as f:
     for line in f.readlines():
-        if line.split("==")[0] in conda_list.stdout:
-            requirements.append(line.strip())
-        elif line.split(" @")[0] in conda_list.stdout:
+        if "==" in line:
+            requirements.append(line.split("==")[0])
+        elif "@" in line:
             requirements.append(line.split(" @")[0].strip())
 
 with open("requirements.txt", "w", encoding="UTF-8") as f:

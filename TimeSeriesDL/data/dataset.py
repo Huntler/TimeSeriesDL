@@ -253,7 +253,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         assert 0 <= index < len(self), f"Invalid index {index}"
-        mat_index = np.argmax(self._max_indices - index >= 0)
+        mat_index = np.argmax(self._max_indices - (index + 1) >= 0)
         if mat_index > 0:
             index -= self._max_indices[mat_index - 1]
 
