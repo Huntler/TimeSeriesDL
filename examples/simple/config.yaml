@@ -1,6 +1,6 @@
 dataset:
   sequence_length: 2500
-  future_steps: 100
+  future_steps: 200
   path: 
     - ./examples/train_1.mat
     - ./examples/train_2.mat
@@ -8,8 +8,8 @@ dataset:
   
 testset:
   sequence_length: 2500
-  future_steps: 100
-  path: ./examples/train_3.mat
+  future_steps: 200
+  path: ./examples/train_4.mat
   
 dataloader:
   batch_size: 64
@@ -31,7 +31,7 @@ model_name: ConvLSTM
 model_path: None
 model:
   sequence_length: 2500
-  future_steps: 100
+  future_steps: 200
   features: 5
   latent_size: 16
   kernel_size: 25
