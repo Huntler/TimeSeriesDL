@@ -74,7 +74,18 @@ class Config:
         with open(path, "r", encoding="UTF-8") as stream:
             args = yaml.safe_load(stream)
 
-        return self._set_precision(args)
+        # load correct precision dtype
+        args = self._set_precision(args)
+
+        # set shared args to defined keys
+        shared = args.get("shared", None)
+        if shared:
+            keys = shared.get("with", list(args.keys()))
+            for key in keys:
+                for param, value in shared["args"]:
+                    args[key][param] = value
+
+        return args
 
     def store_args(self, path: str, args: Dict) -> None:
         """Stores the argument dictionary to a given file path.
