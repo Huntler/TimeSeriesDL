@@ -30,8 +30,6 @@ trainer.set_loss_suite(loss_suite)
 
 # create a model based on what is defined in the config
 # to do so, a model needs to be registered using config.register_model()
-train_args["model"]["sequence_length"] = train_args["dataset"]["sequence_length"]
-train_args["model"]["future_steps"] = train_args["dataset"]["future_steps"]
 train_args["model"]["in_features"] = data.sample_shape()[-1]
 
 model_name = train_args["model_name"]
