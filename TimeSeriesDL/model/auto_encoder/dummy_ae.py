@@ -13,13 +13,21 @@ class DummyAutoEncoder(AutoEncoder):
 
     def encode(self, x: torch.tensor, as_array: bool = False) -> np.array:
         """Always returns the input as numpy array."""
-        return x.cpu().detach().numpy()
+        if as_array:
+            return x.cpu().detach().numpy()
+
+        x: torch.tensor = torch.swapaxes(x, 1, 3)
+        x: torch.tensor = torch.swapaxes(x, 2, 1)
+        return x
 
     def decode(self, x: torch.tensor, as_array: bool = False) -> np.array:
         """Swaps the axis of the input as a real auto encoder would do."""
         x: torch.tensor = torch.swapaxes(x, 2, 1)
         x: torch.tensor = torch.swapaxes(x, 1, 3)
-        return x.cpu().detach().numpy()
+
+        if as_array:
+            return x.cpu().detach().numpy()
+        return x
 
     @property
     def precision(self):
