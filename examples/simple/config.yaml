@@ -9,10 +9,10 @@ dataset:
 testset:
   sequence_length: 2500
   future_steps: 100
-  path: ./examples/train_3.mat
+  path: ./examples/train_4.mat
   
 dataloader:
-  batch_size: 64
+  batch_size: 128
   shuffle: True
 
 trainer:
