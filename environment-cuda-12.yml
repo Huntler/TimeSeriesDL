@@ -15,6 +15,7 @@ dependencies:
     - pyyaml
     - ipython
     - pytorch=2.3.0
+    - lightning
     - torchvision
     - tensorboard
     - setuptools
