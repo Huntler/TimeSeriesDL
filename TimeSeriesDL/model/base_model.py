@@ -1,143 +1,69 @@
 """This module contains the base model."""
 
 from typing import List
-import os
 
+import lightning as L
 import torch
-from torch import nn
+
+from TimeSeriesDL.utils import get_loss_by_name
+from TimeSeriesDL.utils import get_optimizer_by_name
 
 
-class BaseModel(nn.Module):
+class BaseModel(L.LightningModule):
     """BaseModel class of any neural network predicting time series.
 
     Args:
-        nn (nn.Module): Torch nn module.
+        (lightning.LightningModule): LightningModule.
     """
 
-    def __init__(self, name: str, tag: str = "") -> None:
+    def __init__(self, loss: str = "MSELoss", optimizer: str = "Adam", lr: float = 1e-3) -> None:
         """Initializes the TensorBoard logger and checks for available GPU(s).
-
-        Args:
-            writer (SummaryWriter, optional): TensorBoard writer. Defaults to a generic path.
         """
         super().__init__()
 
-        # enable tensorboard
-        self._init_log_path(name, tag)
+        self._loss_name = loss
+        self._loss = get_loss_by_name(loss)
+        self._optim = optimizer
+        self._lr = lr
 
-        # check for gpu
-        self._device = "cpu"
-        if torch.cuda.is_available():
-            self._device_name = torch.cuda.get_device_name(0)
-            print(f"GPU acceleration available on {self._device_name}")
+        self._dropout = torch.nn.Dropout()
+        self._mc_iteration = 10
 
-        self._precision = torch.float32
-
-    def _init_log_path(self, name: str, tag: str) -> None:
-        """Initializes the Log path writer.
-
-        Args:
-            name (str): The name of the model folder.
-            tag (str): The tag name of a primary folder.
-        """
-        path = f"runs/{tag}/{name}"
-
-        # check if log path exists, if so add "_<increment>" to the path string
-        _path = path
-        for i in range(100):
-            if os.path.exists(_path):
-                _path = f"{path}_{i}"
-            else:
-                break
-
-        self._tb_path = _path + "/"
-
-    @property
-    def log_path(self) -> str:
-        """Returns the log path of TensorBoard.
-
-        Returns:
-            str: Path as string.
-        """
-        return self._tb_path
-
-    @property
-    def device(self) -> str:
-        """Returns the device, the model uses.
-
-        Returns:
-        str: The device as string.
-        """
-        return self._device
-
-    def use_device(self, device: str) -> None:
-        """Sets the current device to run the model on. e.g. 'cpu', 'cuda', 'mps'.
-
-        Args:
-            device (str): The device to use.
-        """
-        self._device = "cpu"
-        if device == "cuda":
-            if not torch.cuda.is_available():
-                print("No CUDA support on your system. Fallback to CPU.")
-            else:
-                self._device = "cuda"
-
-        if device == "mps":
-            if torch.backends.mps.is_available():
-                if not torch.backends.mps.is_built():
-                    print(
-                        "MPS not available because the current PyTorch install was not "
-                        "built with MPS enabled."
-                    )
-                else:
-                    self._device = "mps"
-            else:
-                print("MPS not available.")
-
-        print(f"Using {self._device} backend.")
-        self.to(self._device)
-
-    def save_to_default(self, post_fix: str | int = None) -> None:
-        """This method saves the current model state to the tensorboard
-        directory.
-
-        Args:
-            post_fix (str | int): Adds a postfix to the model path. Defaults to None.‚
-        """
-        params = self.state_dict()
-        post_fix = f"_{post_fix}" if post_fix is not None else ""
-        if not os.path.exists(f"{self._tb_path}/models/"):
-            os.makedirs(f"{self._tb_path}/models/")
-
-        torch.save(params, f"{self._tb_path}/models/model{post_fix}.torch")
-
-    def load(self, path: str) -> None:
-        """Loads a model with its parameters into this object.
-
-        Args:
-            path (str): The model's path.
-
-        Raises:
-            NotImplementedError: The Base model has not implemented this.
-        """
-        raise NotImplementedError()
-
-    def forward(self, x):
-        """
-        This method performs the forward call on the neural network
-        architecture.
-
-        Args:
-            x (Any): The input passed to the defined neural network. The shape is
-            (batch_size, sequence_length, values)
-            future_steps (int, optional): The amount of steps predicted.
-
-        Raises:
-            NotImplementedError: The Base model has not implementation
-                                 for this.
-        """
+    def forward(self, batch: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
+
+    def training_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        x, y = batch
+        y_hat = self(x)
+        loss = self._loss(y_hat, y)
+        self.log(f"train/{self._loss_name}", loss)
+        return loss
+
+    def test_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        x, y = batch
+        y_hat = self(x)
+        loss = self._loss(y_hat, y)
+        self.log(f"test/{self._loss_name}", loss)
+        return loss
+
+    def validation_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        x, y = batch
+        y_hat = self(x)
+        loss = self._loss(y_hat, y)
+        self.log(f"validate/{self._loss_name}", loss)
+        return loss
+
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        return get_optimizer_by_name(self._optim)(self.parameters(), lr=self._lr)
+
+    def predict_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        # enable Monte Carlo Dropout
+        self._dropout.train()
+
+        # take average of MC-iterations
+        pred = [self._dropout(self(batch)).unsqueeze(0) for _ in range(self._mc_iteration)]
+        pred = torch.vstack(pred).mean(dim=0)
+        return pred
 
     def predict(self, x: torch.tensor, as_array: bool = False) -> List:
         """This method only predicts future steps based on the given curve described by
@@ -150,9 +76,8 @@ class BaseModel(nn.Module):
         Returns:
             List: The prediction.
         """
-        x = x.to(self._device)
         with torch.no_grad():
-            out = self(x)
+            out = self.predict_step(x)
             if as_array:
                 out = out.cpu().numpy()
 
