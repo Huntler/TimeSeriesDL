@@ -1,9 +1,7 @@
 """This module contains the config manager."""
-from typing import Dict
+from typing import Dict, Any
 import torch
 import numpy as np
-
-from TimeSeriesDL.model.base_model import BaseModel
 
 
 class ModelRegister:
@@ -18,12 +16,12 @@ class ModelRegister:
     def __init__(self) -> None:
         self.__model_register = {}
 
-    def register_model(self, name: str, model_class: BaseModel) -> None:
+    def register_model(self, name: str, model_class) -> None:
         """Method registers a model corresponding to the provided name.
 
         Args:
             name (str): The name, so the model can be accessed later on.
-            model_class (BaseModel): The class of the model to register.
+            model_class (Any): The class of the model to register.
         """
         self.__model_register[name] = model_class
 
@@ -41,7 +39,7 @@ class ModelRegister:
 
         return d
 
-    def get_model(self, name: str) -> BaseModel:
+    def get_model(self, name: str) -> Any:
         """Method returns a registered BaseModel.
 
         Args:
@@ -51,7 +49,7 @@ class ModelRegister:
             RuntimeError: Occurs if the model was not registered.
 
         Returns:
-            BaseModel: The model corresponding to the name.
+            Any: The model corresponding to the name.
         """
         model = self.__model_register.get(name, None)
         if not model:
