@@ -5,7 +5,7 @@ import numpy as np
 from TimeSeriesDL.data import Dataset
 
 
-paths = [f"examples/train_{i + 1}.mat" for i in range(4)]
+paths = [f"examples/data/train_{i + 1}.mat" for i in range(4)]
 sequence = random.randint(1, 50)
 future = random.randint(1, 50)
 length = 100_000 - sequence - future + 1
