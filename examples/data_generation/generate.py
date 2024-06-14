@@ -3,7 +3,6 @@ import argparse
 import numpy as np
 from scipy.io import savemat
 import matplotlib.pyplot as plt
-import functions
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--samples", help="Number of samples to generate")
