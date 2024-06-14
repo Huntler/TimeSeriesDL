@@ -4,18 +4,18 @@ trainer:
     - class_path: lightning.pytorch.callbacks.EarlyStopping
       init_args:
         monitor: validate/MSELoss
-        min_delta: 0.001
+        min_delta: 0.0001
         patience: 3
   precision: 32
-  max_epochs: 10
+  max_epochs: 15
   profiler: "simple"
 model:
   in_features: 5
-  sequence_length: 1000
+  sequence_length: 500
   future_steps: 1
   latent_features: 15
   hidden_dim: 64
-  kernel: 21
+  kernel: 15
   lstm_layers: 2
   dropout: 0.0
   out_act: sigmoid
@@ -33,7 +33,7 @@ data:
     sequence_length: 1000
     future_steps: 1
   loader_kwargs:
-    batch_size: 128
+    batch_size: 512
     shuffle: True
-    num_workers: 2
+    num_workers: 3
     persistent_workers: True

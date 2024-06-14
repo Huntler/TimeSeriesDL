@@ -1,6 +1,6 @@
 """This module defines the interface for an auto-encoder."""
 import torch
-from TimeSeriesDL.model import BaseModel
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 class AutoEncoder(BaseModel):

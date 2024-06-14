@@ -1,6 +1,6 @@
 """This module contains a straightfowrad LSTM model."""
 import torch
-from TimeSeriesDL.model import BaseModel
+from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils import get_activation_from_string
 from TimeSeriesDL.utils import model_register
 

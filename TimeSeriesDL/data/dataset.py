@@ -3,13 +3,10 @@
 import re
 from typing import List, Tuple
 from sklearn.preprocessing import MinMaxScaler
-from tqdm import trange
 import scipy.io
 from scipy.io import savemat
 import torch
 import numpy as np
-
-from TimeSeriesDL.model.base_model import BaseModel
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -223,30 +220,6 @@ class Dataset(torch.utils.data.Dataset):
         if isinstance(index, np.ndarray) or isinstance(index, int):
             return self._mat[0][start:end, :, index]
         return self._mat[0][start:end, :, :]
-
-    def apply(self, model: BaseModel) -> None:
-        """Applys the prediction of the given model on this dataset. 
-        Runtime is O(n_samples / window_size).
-
-        Args:
-            model (BaseModel): The model to use, needs to be trained.
-        """
-        assert len(self._mat) == 1, "Single-matrix dataset supported only"
-
-        # create storage of prediction
-        full_sequence = np.zeros(self._mat[0].shape)
-        full_sequence[0:self._seq, :] = self.slice(0, self._seq)
-
-        # predict based on sliding window
-        print("Apply model on dataset...")
-        for i in trange(0, len(self) + self._f_seq, self._seq):
-            window = full_sequence[i:i + self._seq]
-            window = torch.tensor(window, device=model.device, dtype=torch.float32)
-            window = torch.unsqueeze(window, 0)
-            sample = model.predict(window)
-            full_sequence[i + self._seq:i + self._seq + self._f_seq] = sample.detach().cpu().numpy()
-
-        self._mat[0] = full_sequence
 
     def save(self, path: str) -> None:
         """Saves the dataset to the provided path as scipy matrix. Runtime is
