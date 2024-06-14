@@ -5,8 +5,7 @@ from typing import List
 import lightning as L
 import torch
 
-from TimeSeriesDL.utils import get_loss_by_name
-from TimeSeriesDL.utils import get_optimizer_by_name
+from TimeSeriesDL.utils import get_loss_by_name, get_optimizer_by_name
 
 
 class BaseModel(L.LightningModule):
