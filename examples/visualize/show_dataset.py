@@ -4,7 +4,7 @@ import argparse
 from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.debug import VisualizeDataset
 from TimeSeriesDL.model.base_model import BaseModel
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.utils import model_register
 
 
 if __name__ == "__main__":
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # define args
     args = parser.parse_args()
-    train_args = config.get_args(args.config)
+    train_args = model_register.get_args(args.config)
     if args.compare_to:
         train_args["dataset"]["path"] = args.compare_to
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # load the second dataset to compare to the already loaded one if the argument is provided
     if args.compare_to:
-        model: BaseModel = config.get_model(train_args["model_name"])(**train_args["model"])
+        model: BaseModel = model_register.get_model(train_args["model_name"])(**train_args["model"])
         model.load(train_args["model_path"])
 
         vis.generate_overlay(model)

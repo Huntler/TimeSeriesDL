@@ -1,14 +1,12 @@
 """This module contains the config manager."""
-import os
 from typing import Dict
-import yaml
 import torch
 import numpy as np
 
 from TimeSeriesDL.model.base_model import BaseModel
 
 
-class Config:
+class ModelRegister:
     """Handles algorithm argument and model parameter load and save.
     """
 
@@ -61,48 +59,5 @@ class Config:
 
         return model
 
-    def get_args(self, path: str) -> Dict:
-        """This method reads the hyperparameters and program args of a 
-        specified yaml and returns them as dictionary.
 
-        Args:
-            path (str): The yaml path file.
-
-        Returns:
-            Dict: The dictionary containing all arguments.
-        """
-        with open(path, "r", encoding="UTF-8") as stream:
-            args = yaml.safe_load(stream)
-
-        # load correct precision dtype
-        args = self._set_precision(args)
-
-        # set shared args to defined keys
-        shared = args.get("shared", None)
-        if shared:
-            keys = shared.get("with", list(args.keys()))
-            for key in keys:
-                for param, value in shared["args"]:
-                    args[key][param] = value
-
-        return args
-
-    def store_args(self, path: str, args: Dict) -> None:
-        """Stores the argument dictionary to a given file path.
-
-        Args:
-            path (str): The file path.
-            args (Dict): The arguments.
-        """
-        del args["model"]["precision"]
-        del args["dataset"]["precision"]
-
-        folder = path.replace(os.path.basename(path), "")
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-
-        with open(path, "w", encoding="UTF-8") as stream:
-            yaml.safe_dump(args, stream)
-
-
-config = Config()
+model_register = ModelRegister()

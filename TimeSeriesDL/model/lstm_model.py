@@ -2,7 +2,7 @@
 import torch
 from TimeSeriesDL.model.base_model import BaseModel
 from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.utils.config import model_register
 
 
 class LSTM(BaseModel):
@@ -64,4 +64,4 @@ class LSTM(BaseModel):
         self.eval()
 
 
-config.register_model("LSTM", LSTM)
+model_register.register_model("LSTM", LSTM)

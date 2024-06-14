@@ -2,7 +2,7 @@
 import argparse
 from TimeSeriesDL.debug import VisualizeConv
 from TimeSeriesDL.model import BaseModel, ConvLSTM
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.utils import model_register
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config", type=str, required=True, help="Config file of a trained model.")
@@ -10,7 +10,7 @@ args = parser.parse_args()
 
 # create or load a model, disable logging to avoid creating a
 # run folder and tensorboard
-args = config.get_args(args.config)
+args = model_register.get_args(args.config)
 args["model"]["log"] = False
 model: BaseModel = ConvLSTM(**args["model"])
 model.load(args["model_path"])
