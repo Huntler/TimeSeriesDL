@@ -1,0 +1,39 @@
+seed_everything: true
+trainer:
+  callbacks: 
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: validate/MSELoss
+        min_delta: 0.001
+        patience: 3
+  precision: 32
+  max_epochs: 10
+  profiler: "simple"
+model:
+  in_features: 5
+  sequence_length: 1000
+  future_steps: 1
+  latent_features: 15
+  hidden_dim: 64
+  kernel: 21
+  lstm_layers: 2
+  dropout: 0.0
+  out_act: sigmoid
+  loss: MSELoss
+  optimizer: Adam
+  lr: 0.001
+data:
+  files:
+    - examples/train_1.mat
+    - examples/train_2.mat
+    - examples/train_3.mat
+    - examples/train_4.mat
+  data_kwargs:
+    normalize: True
+    sequence_length: 1000
+    future_steps: 1
+  loader_kwargs:
+    batch_size: 128
+    shuffle: True
+    num_workers: 2
+    persistent_workers: True
