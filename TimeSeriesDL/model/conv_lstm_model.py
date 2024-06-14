@@ -1,8 +1,8 @@
 """This module contains a simple CNN/LSTM model."""
 
 import torch
-from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import model_register
+from TimeSeriesDL.utils import get_activation_from_string
+from TimeSeriesDL.utils import model_register
 from TimeSeriesDL.model.base_model import BaseModel
 
 
