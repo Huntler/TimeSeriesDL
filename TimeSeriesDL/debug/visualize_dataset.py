@@ -6,8 +6,6 @@ import torch
 import numpy as np
 from tqdm import trange
 from TimeSeriesDL.data import Dataset
-from TimeSeriesDL.model import BaseModel
-
 
 
 def _transform_feature(feature: int | List[int], max_f: int) -> np.array:
@@ -112,14 +110,14 @@ class VisualizeDataset:
         assert getattr(overlay, 'is_overlay', False), "Expected overlay to have 'is_overlay' set to True"
         self._overlay = overlay
 
-    def generate_overlay(self, model: BaseModel, dataset: Dataset = None) -> None:
+    def generate_overlay(self, model, dataset: Dataset = None) -> None:
         """Generates an overlay for this visualized dataset, which will be plotted in
         same graph. This method can only be called on a normal object (i.e., not an
         overlay itself). If you try to generate an overlay for another overlay, this
         will raise an assertion error.
         
         Args:
-            model (BaseModel): The model to generate the overlay for.
+            model (Any): The model to generate the overlay for.
             dataset (Dataset): The dataset on which the model predicts. Defaults to None.
         """
         dataset = dataset if dataset else self._dataset

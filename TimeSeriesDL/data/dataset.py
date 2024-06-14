@@ -5,7 +5,6 @@ import torch
 import numpy as np
 
 from TimeSeriesDL.data.tensor_normalizer import TensorNormalizer
-from TimeSeriesDL.model.base_model import BaseModel
 
 
 class Dataset(torch.utils.data.Dataset):

@@ -3,7 +3,7 @@
 import torch
 from TimeSeriesDL.utils import get_activation_from_string
 from TimeSeriesDL.utils import model_register
-from TimeSeriesDL.model import BaseModel
+from TimeSeriesDL.model.base_model import BaseModel
 
 
 class ConvLSTM(BaseModel):
