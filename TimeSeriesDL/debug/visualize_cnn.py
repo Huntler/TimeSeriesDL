@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.model import BaseModel
 
 
 class VisualizeConv:

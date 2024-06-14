@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from tqdm import trange
-from TimeSeriesDL.data.dataset import Dataset
-from TimeSeriesDL.model.base_model import BaseModel
+from TimeSeriesDL.data import Dataset
+from TimeSeriesDL.model import BaseModel
 
 
 
