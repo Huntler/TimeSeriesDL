@@ -24,10 +24,10 @@ model:
   lr: 0.001
 data:
   files:
-    - examples/train_1.mat
-    - examples/train_2.mat
-    - examples/train_3.mat
-    - examples/train_4.mat
+    - examples/data/train_1.mat
+    - examples/data/train_2.mat
+    - examples/data/train_3.mat
+    - examples/data/train_4.mat
   data_kwargs:
     normalize: True
     sequence_length: 1000
