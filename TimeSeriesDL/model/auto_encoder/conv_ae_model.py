@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
 from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.utils.config import model_register
 
 
 class ConvAE(AutoEncoder):
@@ -165,4 +165,4 @@ class ConvAE(AutoEncoder):
         self.eval()
 
 
-config.register_model("ConvAE", ConvAE)
+model_register.register_model("ConvAE", ConvAE)
