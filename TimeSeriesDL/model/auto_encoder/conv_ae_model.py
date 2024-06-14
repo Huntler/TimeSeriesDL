@@ -2,8 +2,8 @@
 import torch
 from torch import nn
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
-from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import model_register
+from TimeSeriesDL.utils import get_activation_from_string
+from TimeSeriesDL.utils import model_register
 
 
 class ConvAE(AutoEncoder):

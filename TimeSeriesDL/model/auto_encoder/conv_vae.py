@@ -4,7 +4,7 @@ from typing import Tuple
 import torch
 from torch import nn
 from TimeSeriesDL.model import ConvAE
-from TimeSeriesDL.utils.config import model_register
+from TimeSeriesDL.utils import model_register
 
 
 class ConvVAE(ConvAE):
