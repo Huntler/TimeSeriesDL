@@ -3,9 +3,9 @@ channels:
     - pytorch
     - conda-forge 
 dependencies:
-    - python=3.10
+    - python
     - scikit-learn
-    - numpy
+    - numpy<2.0
     - scipy
     - pandas
     - matplotlib
@@ -16,4 +16,5 @@ dependencies:
     - lightning
     - torchvision
     - tensorboard
+    - mlflow
     - setuptools
