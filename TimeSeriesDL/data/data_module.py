@@ -37,7 +37,7 @@ class TSDataModule(L.LightningDataModule):
         self._test = None
 
     def setup(self, stage: str) -> None:
-        assert stage in ["fit", "test"], "Unsopported stage, supported are [fit, test]."
+        #assert stage in ["fit", "test"], "Unsopported stage, supported are [fit, test]."
         self._free_memory()
 
         # define the splits: 0.7, 0.2, 0.1
