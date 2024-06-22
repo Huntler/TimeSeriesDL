@@ -14,8 +14,14 @@ def cli_main():
     logger = TensorBoardLogger("lightning_logs", name=cli.model.__class__.__name__)
     cli.trainer.logger = logger
 
+    # run methods before fit
+    cli.before_fit()
+
     # train
     cli.trainer.fit(cli.model, cli.datamodule)
+
+    # run methods after fit
+    cli.after_fit()
 
 
 if __name__ == "__main__":

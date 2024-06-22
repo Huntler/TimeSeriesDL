@@ -218,6 +218,7 @@ runs/
 */runs/
 .lr_find*
 lightning_logs/
+.lr_find_*
 
 ### VisualStudioCode Patch ###
 # Ignore all local history of files
