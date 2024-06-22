@@ -4,6 +4,7 @@ from typing import List
 
 import lightning as L
 import torch
+from torch.optim.lr_scheduler import ExponentialLR
 
 from TimeSeriesDL.utils import get_loss_by_name, get_optimizer_by_name
 
@@ -23,13 +24,19 @@ class BaseModel(L.LightningModule):
         self._loss_name = loss
         self._loss = get_loss_by_name(loss)
         self._optim = optimizer
-        self._lr = lr
+        self._lr_scheduler = ExponentialLR
+        self._lr_decay = 0.99
+        self.lr = lr
 
         self._dropout = torch.nn.Dropout()
         self._mc_iteration = 10
 
     def forward(self, batch: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
+
+    def on_train_epoch_start(self) -> None:
+        super().on_train_epoch_start()
+        self.log("epoch/lr", self._lr_scheduler.get_last_lr()[-1])
 
     def training_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
         x, y = batch
@@ -53,7 +60,11 @@ class BaseModel(L.LightningModule):
         return loss
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        return get_optimizer_by_name(self._optim)(self.parameters(), lr=self._lr)
+        # init optimizer if it's a string
+        if isinstance(self._optim, str):
+            self._optim = get_optimizer_by_name(self._optim)(self.parameters(), lr=self.lr)
+            self._lr_scheduler = self._lr_scheduler(self._optim, gamma=0.99)
+        return [self._optim], [{"scheduler": self._lr_scheduler, "interval": "epoch"}]
 
     def predict_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
         # enable Monte Carlo Dropout
