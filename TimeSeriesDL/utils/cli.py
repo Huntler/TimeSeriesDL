@@ -27,7 +27,8 @@ class TSLightningCLI(LightningCLI):
         # find the best lr rate
         if self.config.find_lr:
             tuner = Tuner(self.trainer)
-            lr_finder = tuner.lr_find(self.model, self.datamodule, num_training=500, mode="linear")
+            lr_finder = tuner.lr_find(self.model, self.datamodule, num_training=500, mode="linear",
+                                      min_lr=1e-8, max_lr=0.3)
             fig = lr_finder.plot(suggest=True)
             fig.show()
 
@@ -48,5 +49,6 @@ class TSLightningCLI(LightningCLI):
             vis.visualize(f"{self.trainer.logger.log_dir}/analysis.png")
 
         if self.config.visualize_test:
-            data = self.trainer.predict(self.model, self.trainer.test_dataloaders, None)
+            pass
+            # data = self.trainer.predict(self.model, self.trainer.test_dataloaders, None)
             # TODO: visualize data
