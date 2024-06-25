@@ -1,7 +1,6 @@
 """This module generates a dataset using functions from the function's module."""
 import argparse
 import numpy as np
-from scipy.io import savemat
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
@@ -35,7 +34,7 @@ if version == 0:
     y5 = np.log(x + 1) * f
 
     d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
-    savemat(path, d)
+    np.savetxt(path, np.column_stack((y1, y2, y3, y4, y5)), delimiter=",", header=",".join(list(d.keys())))
 
 elif version == 1:
     # Generate a sequence of x values
@@ -49,7 +48,7 @@ elif version == 1:
     y5 = np.log(x + 1)
 
     d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
-    savemat(path, d)
+    np.savetxt(path, np.column_stack((y1, y2, y3, y4, y5)), delimiter=",", header=",".join(list(d.keys())))
 
 elif version == 2:
     # same as version 1 but shifted by x=1
@@ -64,7 +63,7 @@ elif version == 2:
     y5 = np.log(x + 1)
 
     d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
-    savemat(path, d)
+    np.savetxt(path, np.column_stack((y1, y2, y3, y4, y5)), delimiter=",", header=",".join(list(d.keys())))
 
 elif version == 3:
     # same as version 1 but shifted by x=1 and y*0.2
@@ -80,7 +79,7 @@ elif version == 3:
     y5 = np.log(x + 1) * factor
 
     d = {"train_1": y1, "train_2": y2, "train_3": y3, "train_4": y4, "train_5": y5}
-    savemat(path, d)
+    np.savetxt(path, np.column_stack((y1, y2, y3, y4, y5)), delimiter=",", header=",".join(list(d.keys())))
 
 # show the dataset
 if args.visualize:

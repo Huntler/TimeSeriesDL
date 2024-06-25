@@ -24,12 +24,12 @@ model:
   lr: 0.001
 data:
   files:
-    - examples/data/train_1.mat
-    - examples/data/train_2.mat
-    - examples/data/train_3.mat
-    - examples/data/train_4.mat
+    - examples/data/train_1.csv
+    - examples/data/train_2.csv
+    - examples/data/train_3.csv
+    - examples/data/train_4.csv
   data_kwargs:
-    normalize: True
+    scaler: normalize
     sequence_length: 500
     future_steps: 1
   loader_kwargs:
