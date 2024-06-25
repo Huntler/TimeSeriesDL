@@ -21,6 +21,7 @@ class Dataset(torch.utils.data.Dataset):
         future_steps: int = 1,
         sequence_length: int = 32,
         scaler: str = None,
+        decoder_input: bool = False,
         precision: np.dtype = np.float32,
         path: str | List[str] = None
     ):
@@ -29,6 +30,8 @@ class Dataset(torch.utils.data.Dataset):
         self._precision = precision
         self._seq = sequence_length
         self._f_seq = future_steps
+
+        self._decoder_input = decoder_input
         self._scaler = scaler
         assert scaler in [None, "normalize", "standardize"]
 
@@ -205,12 +208,14 @@ class Dataset(torch.utils.data.Dataset):
             dec_input = scaler.transform(dec_input)
             dec_output = scaler.transform(dec_output)
 
-        return enc_input, dec_input, dec_output, scaler
+        if self._decoder_input:
+            return (enc_input, dec_input), dec_output, scaler
+        return enc_input, dec_output, scaler
 
 
     def __len__(self):
         return self.shape[0]
 
     def __getitem__(self, index):
-        x, _, y, _ = self.get(index)
+        x, y, _ = self.get(index)
         return x, y
