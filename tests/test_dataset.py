@@ -5,7 +5,7 @@ import numpy as np
 from TimeSeriesDL.data import Dataset
 
 
-paths = [f"examples/train_{i + 1}.mat" for i in range(4)]
+paths = [f"examples/data/train_{i + 1}.csv" for i in range(4)]
 sequence = random.randint(1, 50)
 future = random.randint(1, 50)
 length = 100_000 - sequence - future + 1
@@ -36,7 +36,7 @@ class TestDataset(unittest.TestCase):
         for path in paths:
             dataset = Dataset(sequence_length=sequence, future_steps=future, path=path)
             slice_result = dataset.slice(0, 100) 
-            self.assertEqual(slice_result.shape, (100, 1, 5))  
+            self.assertEqual(slice_result.shape, (100, 5))  
 
         # Test multi-matrix dataset
         # The slice method should throw an assertion error when used on a multi-matrix dataset
@@ -78,13 +78,13 @@ class TestDataset(unittest.TestCase):
         Tests getting the shape from a single-matrix or multi-matrix dataset.
         """
         # Test single-matrix dataset
-        expected = (length, 1, 5)
+        expected = (length, 5)
         for path in paths:
             dataset = Dataset(sequence_length=sequence, future_steps=future, path=path)
             self.assertTupleEqual(dataset.shape, expected)
 
         # Test multi-matrix dataset
-        expected = (length * len(paths), 1, 5)
+        expected = (length * len(paths), 5)
         dataset = Dataset(sequence_length=sequence, future_steps=future, path=paths)
         self.assertTupleEqual(dataset.shape, expected)
 
@@ -92,8 +92,8 @@ class TestDataset(unittest.TestCase):
         """
         Tests getting the sample shape from a single-matrix or multi-matrix dataset.
         """
-        expected_x = (sequence, 1, 5)
-        expected_y = (future, 1, 5)
+        expected_x = (sequence, 5)
+        expected_y = (future, 5)
 
         # Test single-matrix dataset
         # Check that the sample shape matches the expected values, the parameter True/False
@@ -114,7 +114,7 @@ class TestDataset(unittest.TestCase):
         """
         # define the new sequence to set to know what to expect
         seq = random.randint(50, 100)
-        expected = (seq, 1, 5)
+        expected = (seq, 5)
 
         # test single-matrix dataset
         # .sample_shape() uses the dataset._seq attribute, as all other methods
@@ -189,13 +189,13 @@ class TestDataset(unittest.TestCase):
         _feature = random.randint(1, 100)
 
         labels = [f"a{i}" for i in range(_feature)]
-        content = np.zeros((50_000, 1, _feature))
+        content = np.zeros((50_000, _feature))
         dataset.overwrite_content(content, labels)
 
-        self.assertTupleEqual((_length, 1, _feature), dataset.shape)
+        self.assertTupleEqual((_length, _feature), dataset.shape)
         self.assertListEqual(labels, dataset.label_names)
-        self.assertTupleEqual((sequence, 1, _feature), dataset[0][0].shape)
-        self.assertTupleEqual((future, 1, _feature), dataset[0][1].shape)
+        self.assertTupleEqual((sequence, _feature), dataset[0][0].shape)
+        self.assertTupleEqual((future, _feature), dataset[0][1].shape)
 
 
 if __name__ == "__main__":

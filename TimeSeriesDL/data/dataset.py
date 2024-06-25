@@ -1,14 +1,10 @@
 """This module contains the Dataset loader."""
 
-import re
 from typing import List, Tuple
-from sklearn.preprocessing import MinMaxScaler
-from tqdm import trange
-import scipy.io
-from scipy.io import savemat
 import torch
 import numpy as np
 
+from TimeSeriesDL.data.tensor_normalizer import TensorNormalizer
 from TimeSeriesDL.model.base_model import BaseModel
 
 
@@ -23,20 +19,19 @@ class Dataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        normalize: bool = True,
-        bounds: Tuple[int] = (0, 1),
         future_steps: int = 1,
         sequence_length: int = 32,
+        scaler: str = None,
         precision: np.dtype = np.float32,
-        path: str | List[str] = None,
-        ae_mode: bool = False
+        path: str | List[str] = None
     ):
         super().__init__()
 
         self._precision = precision
         self._seq = sequence_length
         self._f_seq = future_steps
-        self._ae_mode = ae_mode
+        self._scaler = scaler
+        assert scaler in [None, "normalize", "standardize"]
 
         # load the dataset specified, if a path is provided,
         # otherwise create an empty dataset
@@ -49,19 +44,8 @@ class Dataset(torch.utils.data.Dataset):
         self._load_data()
         self._shape = self.shape
 
-        # normalize the dataset between values of o to 1
-        self._scaler = None
-        if normalize:
-            for i, mat in enumerate(self._mat):
-                self._scaler = MinMaxScaler(feature_range=bounds)
-                self._scaler = self._scaler.fit(mat[:, 0, :])
-                self._mat[i][:, 0, :] = self._scaler.transform(mat[:, 0, :])
-
         # pre-compute which index corresponds to which matrix
         self._precompute_indices()
-
-        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
-        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
 
     def _precompute_indices(self) -> None:
         """Method pre-computes the indices for eventual sub-matrices.
@@ -110,35 +94,22 @@ class Dataset(torch.utils.data.Dataset):
         self._shape = self.shape
         self._precompute_indices()
 
-        assert len(self._shape) == 3, f"Expect dataset dimensions to be 3, got {len(self._shape)}"
-        assert self._shape[1] == 1, f"Expect dataset channel dimension to be 1, got {self._shape[1]}"
-
     def _load_data(self) -> None:
+        # clear container
         self._mat = []
-        self._labels = []
+        self._labels = None
 
-        # Runtime is O(n_files * n_labels).
-        for path in self._file:
-            labels = []
-            mat = []
-            for label, data in sorted(scipy.io.loadmat(path).items()):
-                # skip entries which are not labels
-                if re.search("__\\w*__", label):
-                    continue
+        for file in self._file:
+            # get the labels first
+            with open(file, "r") as f:
+                labels = f.readlines()[0][2:-1].split(",")
+                if not self._labels:
+                    self._labels = labels
+                assert self._labels == labels, f"Expected labels to be equal, got {self._labels} and {labels}"
 
-                labels.append(label)
-                mat.append(data[0, :])
-
-            # swap axes to have feature, samples
-            mat: np.array = np.array(mat, dtype=self._precision)
-            mat = np.swapaxes(mat, 0, 1)
-
-            self._mat.append(mat)
-            self._labels = labels
-
-        # add a dimension to have one channel per feature/sample
-        if len(self._mat[0].shape) != 3:
-            self._mat = [np.expand_dims(m, 1) for m in self._mat]
+            # load the data and store them to the matrix
+            data = np.loadtxt(file, delimiter=",", dtype=self._precision)
+            self._mat.append(data)
 
     def set_sequence(self, length: int) -> None:
         """Sets the sequence length of the samples output. Runtime is O(1).
@@ -174,10 +145,10 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             Tuple[int, int, int]: The shape of one sample as tuple of ints.
         """
-        _, channels,features = self._mat[0].shape
+        _,features = self._mat[0].shape
         if not label:
-            return self._seq, channels, features
-        return self._f_seq, channels, features
+            return self._seq, features
+        return self._f_seq, features
 
     def scale_back(self, data: List):
         """Scales the given data back using the inverse scaler. Runtime is O(1).
@@ -188,20 +159,6 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             np.array: Data scaled to input range.
         """
-        input_shape = data.shape
-        assert len(self._mat) == 1, "Revert scaling is only supported when one dataset is loaded"
-        if len(input_shape) == 3:
-            assert data.shape[1] == 1, f"Can not scale back on multi-channel data. {data.shape} got {data.shape[1]}"
-            data = data[:, 0, :]
-
-        if self._scaler:
-            data = np.array(data, dtype=self._precision)
-            data = self._scaler.inverse_transform(data)
-            if len(input_shape) == 3:
-                data = np.expand_dims(data, 1)
-            return data
-
-        print("Warning, no scaler defined.")
         return data
 
     def slice(self, start: int, end: int, index: int | np.ndarray = None) -> np.array:
@@ -221,61 +178,40 @@ class Dataset(torch.utils.data.Dataset):
         assert end != -1, "End must be well defined."
 
         if isinstance(index, np.ndarray) or isinstance(index, int):
-            return self._mat[0][start:end, :, index]
-        return self._mat[0][start:end, :, :]
+            return self._mat[0][start:end, index]
+        return self._mat[0][start:end, :]
 
-    def apply(self, model: BaseModel) -> None:
-        """Applys the prediction of the given model on this dataset. 
-        Runtime is O(n_samples / window_size).
-
+    def get(self, index: int) -> Tuple[np.array, np.array, TensorNormalizer]:
+        """Returns the data and scaler at a given index.
         Args:
-            model (BaseModel): The model to use, needs to be trained.
+            index (int): Index of the data to return.
+        Returns:
+            Tuple[np.array, np.array]: The data and the scaler at that index.
         """
-        assert len(self._mat) == 1, "Single-matrix dataset supported only"
-
-        # create storage of prediction
-        full_sequence = np.zeros(self._mat[0].shape)
-        full_sequence[0:self._seq, :] = self.slice(0, self._seq)
-
-        # predict based on sliding window
-        print("Apply model on dataset...")
-        for i in trange(0, len(self) + self._f_seq, self._seq):
-            window = full_sequence[i:i + self._seq]
-            window = torch.tensor(window, device=model.device, dtype=torch.float32)
-            window = torch.unsqueeze(window, 0)
-            sample = model.predict(window)
-            full_sequence[i + self._seq:i + self._seq + self._f_seq] = sample.detach().cpu().numpy()
-
-        self._mat[0] = full_sequence
-
-    def save(self, path: str) -> None:
-        """Saves the dataset to the provided path as scipy matrix. Runtime is
-        O(n_labels).
-        
-        Args:
-            path (str): Location of the exported matrix.
-        """
-        assert len(self._mat) == 0, "Single-matrix dataset supported only"
-
-        export = {}
-        for i, label in enumerate(self.label_names):
-            export[label] = self._mat[:, :, i]
-        savemat(path, export)
-
-    def __len__(self):
-        return self.shape[0]
-
-    def __getitem__(self, index):
         assert 0 <= index < len(self), f"Invalid index {index}"
         mat_index = np.argmax(self._max_indices - (index + 1) >= 0)
         if mat_index > 0:
             index -= self._max_indices[mat_index - 1]
 
-        x = self._mat[mat_index][index: self._seq + index, :, :]
+        # define sequence
+        enc_input = self._mat[mat_index][index: self._seq + index, :]
+        dec_input = self._mat[mat_index][self._seq + index - 1: self._seq + index + self._f_seq - 1, :]
+        dec_output = self._mat[mat_index][self._seq + index: self._seq + index + self._f_seq, :]
 
-        # the auto encoder requires input = output
-        if self._ae_mode:
-            return x, x
+        # scale sequences
+        scaler = None
+        if self._scaler:
+            standardize = self._scaler == "standardize"
+            scaler, enc_input = TensorNormalizer(standardize).fit_transform(enc_input)
+            dec_input = scaler.transform(dec_input)
+            dec_output = scaler.transform(dec_output)
 
-        y = self._mat[mat_index][self._seq + index: self._seq + index + self._f_seq, :, :]
+        return enc_input, dec_input, dec_output, scaler
+
+
+    def __len__(self):
+        return self.shape[0]
+
+    def __getitem__(self, index):
+        x, _, y, _ = self.get(index)
         return x, y
