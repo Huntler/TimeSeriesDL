@@ -94,7 +94,8 @@ class ConvLSTM(BaseModel):
 
     def forward(self, batch: torch.tensor):
         # CNN forward pass batch, channels, features, samples
-        x: torch.tensor = torch.swapaxes(batch, 1, 3)  # batch, feature, channel, sample
+        x = torch.unsqueeze(batch, dim=-2)
+        x: torch.tensor = torch.swapaxes(x, 1, 3)  # batch, feature, channel, sample
         x: torch.tensor = torch.swapaxes(x, 2, 1)  # batch, channel, feature, sample
         x = self._conv(x)
         x = torch.relu(x)
@@ -114,8 +115,6 @@ class ConvLSTM(BaseModel):
         x = self._regressor(x)
         x = self._last_activation(x)
 
-        # add the single channel again to ensure correct loss calculation
-        x = torch.unsqueeze(x, 1)
         x = torch.unsqueeze(x, 1)
         return x
 

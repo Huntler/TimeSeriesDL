@@ -1,1 +1,0 @@
-from .seq_to_seq import Seq2Seq
