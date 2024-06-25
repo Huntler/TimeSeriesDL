@@ -216,6 +216,8 @@ cython_debug/
 
 runs/
 */runs/
+.lr_find*
+lightning_logs/
 
 ### VisualStudioCode Patch ###
 # Ignore all local history of files
