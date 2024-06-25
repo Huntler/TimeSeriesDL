@@ -2,8 +2,8 @@
 import torch
 from torch import nn
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
-from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.utils import get_activation_from_string
+from TimeSeriesDL.utils import model_register
 
 
 class ConvAE(AutoEncoder):
@@ -24,10 +24,11 @@ class ConvAE(AutoEncoder):
         stride: int = 1,
         padding: int = 0,
         last_activation: str = "sigmoid",
-        tag: str = "",
-        precision: torch.dtype = torch.float32,
+        loss: str = "MSELoss",
+        optimizer: str = "Adam",
+        lr: float = 1e-3
     ) -> None:
-        super().__init__("ConvAE", tag)
+        super().__init__(loss, optimizer, lr)
 
         # data parameter
         self._features = features
@@ -39,7 +40,6 @@ class ConvAE(AutoEncoder):
         self._kernel_size = kernel_size
         self._stride = stride
         self._padding = padding
-        self._precision = precision
 
         self._latent_space = latent_size
         self._last_activation = get_activation_from_string(last_activation)
@@ -64,7 +64,6 @@ class ConvAE(AutoEncoder):
             (self._features, self._kernel_size),
             self._stride,
             self._padding,
-            dtype=self._precision,
         )
 
         self._encoder_2 = nn.Conv2d(
@@ -73,7 +72,6 @@ class ConvAE(AutoEncoder):
             (self._channels, self._kernel_size//2),
             self._stride,
             self._padding,
-            dtype=self._precision,
         )
 
         # setup decoder
@@ -83,7 +81,6 @@ class ConvAE(AutoEncoder):
             (self._channels, self._kernel_size//2),
             self._stride,
             self._padding,
-            dtype=self._precision,
         )
 
         self._decoder_2 = nn.ConvTranspose2d(
@@ -92,7 +89,6 @@ class ConvAE(AutoEncoder):
             (self._features, self._kernel_size),
             self._stride,
             self._padding,
-            dtype=self._precision,
         )
 
     @property
@@ -156,13 +152,9 @@ class ConvAE(AutoEncoder):
             for param in layer:
                 param.requires_grad = not unfreeze
 
-    def forward(self, x: torch.tensor):
-        x = self.encode(x)
+    def forward(self, batch: torch.tensor):
+        x = self.encode(batch)
         return self.decode(x)
 
-    def load(self, path: str) -> None:
-        self.load_state_dict(torch.load(path))
-        self.eval()
 
-
-config.register_model("ConvAE", ConvAE)
+model_register.register_model("ConvAE", ConvAE)

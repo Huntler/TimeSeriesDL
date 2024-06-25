@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from TimeSeriesDL.data import Dataset
 from TimeSeriesDL.model.auto_encoder import AutoEncoder
-from TimeSeriesDL.utils import config
+from TimeSeriesDL.utils import model_register
 
 
 def check_model_type(ae: AutoEncoder) -> bool:
@@ -41,7 +41,7 @@ def load(train_args: Dict, decode: bool = False) -> Tuple[Dataset, AutoEncoder]:
 
     # load the AE
     model_name = train_args["model_name"]
-    ae = config.get_model(model_name)(**train_args["model"])
+    ae = model_register.get_model(model_name)(**train_args["model"])
     ae.load(path=train_args["model_path"])
 
     # check if the model to load is trained and type AE

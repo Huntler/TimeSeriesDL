@@ -16,8 +16,6 @@ class AutoEncoderCollate:
         self._device = device
         self._ae = ae
 
-        self._ae.use_device(self._device)
-
     def collate_fn(self) -> Callable[..., Tuple[torch.tensor, torch.tensor]]:
         """Custom collate function designed to work with a DataLoader. Uses
         the object's ConvAE to encode a batch of samples before returning it.
@@ -29,8 +27,8 @@ class AutoEncoderCollate:
         def _collate_fn(data: List[Tuple[torch.tensor, torch.tensor]]):
             x, y = zip(*data)
 
-            x = torch.tensor(np.array(x), device=self._device)
-            y = torch.tensor(np.array(y), device=self._device)
+            x = torch.tensor(np.array(x))
+            y = torch.tensor(np.array(y))
 
             x = self._ae.encode(x)
             y = self._ae.encode(y)

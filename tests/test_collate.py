@@ -3,9 +3,9 @@ import unittest
 import random
 import torch
 from TimeSeriesDL.data import Dataset, AutoEncoderCollate
-from TimeSeriesDL.model import DummyAutoEncoder
+from TimeSeriesDL.model.auto_encoder import DummyAutoEncoder
 
-paths = [f"examples/train_{i + 1}.mat" for i in range(4)]
+paths = [f"examples/data/train_{i + 1}.mat" for i in range(4)]
 sequence = random.randint(1, 50)
 future = random.randint(1, 50)
 length = 100_000 - sequence - future + 1

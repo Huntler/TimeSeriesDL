@@ -1,8 +1,8 @@
 """This module contains a simple CNN/LSTM model."""
 
 import torch
-from TimeSeriesDL.utils.activations import get_activation_from_string
-from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.utils import get_activation_from_string
+from TimeSeriesDL.utils import model_register
 from TimeSeriesDL.model.base_model import BaseModel
 
 
@@ -24,11 +24,14 @@ class ConvLSTM(BaseModel):
         kernel: int = 3,
         padding: int = 0,
         lstm_layers: int = 1,
+        dropout: float = 0.1,
         out_act: str = "sigmoid",
-        tag: str = "",
-        precision: torch.dtype = torch.float32,
+        loss: str = "MSELoss",
+        optimizer: str = "Adam",
+        lr: float = 1e-3
     ) -> None:
-        super().__init__("ConvLSTM", tag)
+        super().__init__(loss, optimizer, lr)
+
         # define sequence parameters
         self._in_features = in_features
         self._sequence_length = sequence_length
@@ -38,24 +41,24 @@ class ConvLSTM(BaseModel):
         # CNN hyperparameters
         self._kernel = (self._in_features, kernel)
         self._padding = padding
-        self._stride = min((sequence_length - kernel) // (future_steps - 1), kernel // 2)
-        print(self._kernel, "with stride", self._stride)
+        latent_size = future_steps if future_steps > 1 else sequence_length
+        self._stride = min((sequence_length - kernel) // (latent_size - 1), kernel // 2)
+        self._stride = max(self._stride, 1)
+        print("Kernel", self._kernel, "with stride", self._stride)
 
         # LSTM hyperparameters
         self._hidden_dim = hidden_dim
         self._lstm_layers = lstm_layers
-        self._precision = precision
         self._future_steps = future_steps
 
         # lstm1, linear, cnn are all layers in the network
         # create the layers and initilize them based on our hyperparameters
-        self._conv_1 = torch.nn.Conv2d(
+        self._conv = torch.nn.Conv2d(
             1,
             self._latent_features,
             self._kernel,
             self._stride,
-            self._padding,
-            dtype=self._precision,
+            self._padding
         )
 
         self._lstm = torch.nn.LSTM(
@@ -63,29 +66,22 @@ class ConvLSTM(BaseModel):
             self._hidden_dim,
             self._lstm_layers,
             batch_first=True,
-            dtype=self._precision,
+            dropout=dropout if self._lstm_layers > 1 else 0
         )
 
-        self._linear_1 = torch.nn.Linear(
-            self._hidden_dim, self._latent_features, dtype=self._precision
+        self._regressor = torch.nn.Sequential(
+            torch.nn.Linear(
+                self._hidden_dim, self._hidden_dim // 2
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Linear(
+                self._hidden_dim // 2, self._latent_features
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Linear(
+            self._latent_features, self._in_features
+            )
         )
-        self._linear_2 = torch.nn.Linear(
-            self._latent_features, self._in_features, dtype=self._precision
-        )
-
-    @property
-    def precision(self) -> torch.dtype:
-        """The models precision.
-
-        Returns:
-            torch.dtype: The models precision.
-        """
-        return self._precision
-
-    def load(self, path) -> None:
-        """Loads the model's parameter given a path"""
-        self.load_state_dict(torch.load(path))
-        self.eval()
 
     def _reduction_network(self, x: torch.tensor) -> torch.tensor:
         # reduce the LSTM's output by using a few dense layers
@@ -96,11 +92,11 @@ class ConvLSTM(BaseModel):
         x = self._last_activation(x)
         return x
 
-    def forward(self, x: torch.tensor):
+    def forward(self, batch: torch.tensor):
         # CNN forward pass batch, channels, features, samples
-        x: torch.tensor = torch.swapaxes(x, 1, 3)  # batch, feature, channel, sample
+        x: torch.tensor = torch.swapaxes(batch, 1, 3)  # batch, feature, channel, sample
         x: torch.tensor = torch.swapaxes(x, 2, 1)  # batch, channel, feature, sample
-        x = self._conv_1(x)
+        x = self._conv(x)
         x = torch.relu(x)
 
         # change output to batch, samples, channel, features
@@ -111,22 +107,17 @@ class ConvLSTM(BaseModel):
         x = torch.squeeze(x, 3)
 
         # LSTM forward pass
-        x, _ = self._lstm(x)
-        x = torch.relu(x)
-
-        # the last values are our predection ahead
-        x = x[:, -self._future_steps :, :]
+        _, (hidden, _) = self._lstm(x)
+        x = torch.relu(hidden[-1])
 
         # reduce the LSTM's output to match it's input
-        x = self._linear_1(x)
-        x = torch.relu(x)
-
-        # reduce the size further to match the original input size
-        x = self._linear_2(x)
+        x = self._regressor(x)
         x = self._last_activation(x)
 
         # add the single channel again to ensure correct loss calculation
-        return torch.unsqueeze(x, 2)
+        x = torch.unsqueeze(x, 1)
+        x = torch.unsqueeze(x, 1)
+        return x
 
 
-config.register_model("ConvLSTM", ConvLSTM)
+model_register.register_model("ConvLSTM", ConvLSTM)

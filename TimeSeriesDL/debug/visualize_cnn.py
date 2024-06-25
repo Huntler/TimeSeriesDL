@@ -2,8 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from TimeSeriesDL.model.base_model import BaseModel
-
 
 class VisualizeConv:
     """
@@ -16,7 +14,7 @@ class VisualizeConv:
         visualize(use_mean=True, save=None)
     """
 
-    def __init__(self, model: BaseModel) -> None:
+    def __init__(self, model) -> None:
         self._model = model
 
         # get the first layer

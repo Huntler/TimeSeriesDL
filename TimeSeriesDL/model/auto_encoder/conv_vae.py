@@ -1,10 +1,9 @@
 """This module contains a variational auto-encoder based on CNN."""
-import os
 from typing import Tuple
 import torch
 from torch import nn
-from TimeSeriesDL.model import ConvAE
-from TimeSeriesDL.utils.config import config
+from TimeSeriesDL.model.auto_encoder import ConvAE
+from TimeSeriesDL.utils import model_register
 
 
 class ConvVAE(ConvAE):
@@ -26,11 +25,12 @@ class ConvVAE(ConvAE):
         stride: int = 1,
         padding: int = 0,
         last_activation: str = "sigmoid",
-        tag: str = "",
-        precision: torch.dtype = torch.float32,
+        loss: str = "MSELoss",
+        optimizer: str = "Adam",
+        lr: float = 1e-3
     ) -> None:
         super().__init__(features, sequence_length, channels, extracted_features, latent_size,
-                         kernel_size, stride, padding, last_activation, tag, precision)
+                         kernel_size, stride, padding, last_activation, loss, optimizer, lr)
         # setup latent space distribution
         self._mean_layer = nn.Linear(
             self._enc_2_len * self._latent_space,
@@ -41,19 +41,6 @@ class ConvVAE(ConvAE):
             self._enc_2_len * self._latent_space,
             self._enc_2_len * self._latent_space, dtype=self._precision
         )
-
-    def _init_log_path(self, name, tag) -> None:
-        path = f"runs/{tag}/VAE"
-
-        # check if log path exists, if so add "_<increment>" to the path string
-        _path = path
-        for i in range(100):
-            if os.path.exists(_path):
-                _path = f"{path}_{i}"
-            else:
-                break
-
-        self._tb_path = _path + "/"
 
     def reparameterization(self, mean: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Samples from the latent representation, which is a random distribution in this case.
@@ -112,9 +99,9 @@ class ConvVAE(ConvAE):
             for param in layer:
                 param.requires_grad = not unfreeze
 
-    def forward(self, x: torch.tensor):
+    def forward(self, batch: torch.tensor):
         # encode the data to mean/log_var of latent space
-        mean, log_var = self._encode(x)
+        mean, log_var = self._encode(batch)
 
         # takes exponential function (log var -> var)
         z = self.reparameterization(mean, torch.exp(0.5 * log_var))
@@ -122,9 +109,5 @@ class ConvVAE(ConvAE):
         # decode data back
         return self.decode(z)
 
-    def load(self, path: str) -> None:
-        self.load_state_dict(torch.load(path))
-        self.eval()
 
-
-config.register_model("ConvVAE", ConvVAE)
+model_register.register_model("ConvVAE", ConvVAE)
