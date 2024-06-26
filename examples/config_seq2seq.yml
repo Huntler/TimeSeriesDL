@@ -8,6 +8,7 @@ trainer:
         patience: 5
   precision: 32
   max_epochs: 15
+  gradient_clip_val: 1.0
   profiler: null #"simple"
 model:
   class_path: TimeSeriesDL.model.Seq2Seq
@@ -18,7 +19,7 @@ model:
     dropout: 0.1
     probabilistic: true
     attention: true
-    teacher_force: 0.2
+    teacher_force_decay: 5
     out_act: sigmoid
     loss: GaussianNLLLoss
     optimizer: Adam
@@ -30,7 +31,7 @@ data:
     - examples/data/train_3.csv
     - examples/data/train_4.csv
   data_kwargs:
-    scaler: normalize
+    scaler: standardize
     decoder_input: true
     sequence_length: 500
     future_steps: 50

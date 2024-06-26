@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn.functional as F
 
@@ -17,7 +18,7 @@ class Seq2Seq(BaseModel):
                  dropout: float = 0.1,
                  probabilistic: bool = True,
                  attention: bool = True,
-                 teacher_force: float = None,
+                 teacher_force_decay: float = None,
                  out_act: str = "sigmoid",
                  loss: str = "GaussianNLLLoss",
                  optimizer: str = "Adam",
@@ -39,7 +40,9 @@ class Seq2Seq(BaseModel):
 
         self._last_activation = get_activation_from_string(out_act)
 
-        self._teacher_force = teacher_force
+        self._epoch = 0
+        self._teacher_force_decay = teacher_force_decay
+        self._teacher_force = 1
         self.probabilistic = probabilistic
     
     @staticmethod
@@ -62,6 +65,18 @@ class Seq2Seq(BaseModel):
             return torch.normal(mu, sigma)
         # No sample just reshape if pointwise
         return output.squeeze(-1)
+
+    def _inverse_sigmoid_decay(decay):
+        # inverse sigmoid decay from https://arxiv.org/pdf/1506.03099.pdf
+        def compute(indx):
+            return decay / (decay + math.exp(indx / decay))
+        return compute
+
+    def on_train_epoch_start(self) -> None:
+        super().on_train_epoch_start()
+        self._epoch += 1
+        self._teacher_force = self._inverse_sigmoid_decay(self._teacher_force_decay)(self._epoch)
+        self.log("epoch/teacher_force", self._teacher_force)
     
     def forward(self, batch: torch.tensor):
         # enc_inputs: (batch size, input seq length, num enc features)

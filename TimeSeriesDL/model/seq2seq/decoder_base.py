@@ -19,7 +19,7 @@ class DecoderBase(L.LightningModule):
     def run_single_recurrent_step(self, inputs, hidden, enc_outputs):
         raise NotImplementedError()
     
-    def forward(self, inputs, hidden, enc_outputs, teacher_force_prob=None):
+    def forward(self, inputs, hidden, enc_outputs, teacher_force_prob: float = None):
         # inputs: (batch size, output seq length, num dec features)
         # hidden: (num gru layers, batch size, hidden dim), ie the last hidden state
         # enc_outputs: (batch size, input seq len, hidden size)
@@ -28,7 +28,8 @@ class DecoderBase(L.LightningModule):
         
         # Store decoder outputs
         # outputs: (batch size, output seq len, num targets, num dist params)
-        outputs = torch.zeros(batch_size, dec_output_seq_length, self.target_size, self.dist_size, dtype=torch.float)
+        outputs = torch.zeros(batch_size, dec_output_seq_length, self.target_size, self.dist_size,
+                              dtype=torch.float, device=inputs.device)
 
         # curr_input: (batch size, 1, num dec features)
         curr_input = inputs[:, 0:1, :]
@@ -43,9 +44,9 @@ class DecoderBase(L.LightningModule):
             dec_output = self._sample_from_output(dec_output)
             
             # If teacher forcing, use target from this timestep as next input o.w. use prediction
-            teacher_force = random.random() < teacher_force_prob if teacher_force_prob is not None else False
+            teacher_force = random.random() < teacher_force_prob if teacher_force_prob else False
             
             curr_input = inputs[:, t:t+1, :].clone()
             if not teacher_force:
                 curr_input[:, :, :] = dec_output
-        return outputs.to(inputs.device)
+        return outputs
