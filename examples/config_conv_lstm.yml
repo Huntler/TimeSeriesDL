@@ -1,0 +1,41 @@
+seed_everything: true
+trainer:
+  callbacks: 
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: validate/MSELoss
+        min_delta: 0.0001
+        patience: 5
+  precision: 32
+  max_epochs: 15
+  profiler: null #"simple"
+model:
+  class_path: TimeSeriesDL.model.ConvLSTM
+  init_args:
+    in_features: 5
+    sequence_length: 500
+    future_steps: 1
+    latent_features: 15
+    hidden_dim: 64
+    kernel: 15
+    lstm_layers: 2
+    dropout: 0.0
+    out_act: sigmoid
+    loss: MSELoss
+    optimizer: Adam
+    lr: 0.001
+data:
+  files:
+    - examples/data/train_1.csv
+    - examples/data/train_2.csv
+    - examples/data/train_3.csv
+    - examples/data/train_4.csv
+  data_kwargs:
+    scaler: normalize
+    sequence_length: 500
+    future_steps: 1
+  loader_kwargs:
+    batch_size: 128
+    shuffle: True
+    num_workers: 3
+    persistent_workers: True

@@ -10,18 +10,19 @@ trainer:
   max_epochs: 15
   profiler: null #"simple"
 model:
-  in_features: 5
-  sequence_length: 500
-  future_steps: 1
-  latent_features: 15
-  hidden_dim: 64
-  kernel: 15
-  lstm_layers: 2
-  dropout: 0.0
-  out_act: sigmoid
-  loss: MSELoss
-  optimizer: Adam
-  lr: 0.001
+  class_path: TimeSeriesDL.model.Seq2Seq
+  init_args:
+    in_features: 5
+    hidden_dim: 64
+    gru_layers: 2
+    dropout: 0.1
+    probabilistic: true
+    attention: true
+    teacher_force: 0.2
+    out_act: sigmoid
+    loss: GaussianNLLLoss
+    optimizer: Adam
+    lr: 0.0001
 data:
   files:
     - examples/data/train_1.csv
@@ -31,7 +32,7 @@ data:
   data_kwargs:
     scaler: normalize
     sequence_length: 500
-    future_steps: 1
+    future_steps: 50
   loader_kwargs:
     batch_size: 128
     shuffle: True
