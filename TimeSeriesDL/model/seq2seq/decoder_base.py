@@ -1,12 +1,12 @@
 import random
 import torch
 from torch import nn
+import lightning as L
 
 # Decoder superclass whose forward is called by Seq2Seq but other methods filled out by subclasses
-class DecoderBase(nn.Module):
-    def __init__(self, dec_target_size, target_indices, dist_size, probabilistic):
+class DecoderBase(L.LightningModule):
+    def __init__(self, dec_target_size, dist_size, probabilistic):
         super().__init__()
-        self.target_indices = target_indices
         self.target_size = dec_target_size
         self.dist_size = dist_size
         self.probabilistic = probabilistic
@@ -28,7 +28,7 @@ class DecoderBase(nn.Module):
         
         # Store decoder outputs
         # outputs: (batch size, output seq len, num targets, num dist params)
-        outputs = torch.zeros(batch_size, dec_output_seq_length, self.target_size, dist_size, dtype=torch.float)
+        outputs = torch.zeros(batch_size, dec_output_seq_length, self.target_size, self.dist_size, dtype=torch.float)
 
         # curr_input: (batch size, 1, num dec features)
         curr_input = inputs[:, 0:1, :]
@@ -47,5 +47,5 @@ class DecoderBase(nn.Module):
             
             curr_input = inputs[:, t:t+1, :].clone()
             if not teacher_force:
-                curr_input[:, :, self.target_indices] = dec_output
-        return outputs
+                curr_input[:, :, :] = dec_output
+        return outputs.to(inputs.device)

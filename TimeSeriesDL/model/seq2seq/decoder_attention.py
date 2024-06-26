@@ -1,17 +1,18 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+import lightning as L
 
 from .decoder_base import DecoderBase
 
 
-class Attention(nn.Module):
-    def __init__(self, hidden_size):
+class Attention(L.LightningModule):
+    def __init__(self, hidden_dim):
         super().__init__()
         # the hidden size for the output of attn (and input of v) can actually be any number  
         # Also, using two layers allows for a non-linear act func inbetween
-        self.attn = nn.Linear(2 * hidden_size, hidden_size)
-        self.v = nn.Linear(hidden_size, 1, bias=False)
+        self.attn = nn.Linear(2 * hidden_dim, hidden_dim)
+        self.v = nn.Linear(hidden_dim, 1, bias=False)
     
     def forward(self, decoder_hidden_final_layer, encoder_outputs):
         # decoder_hidden_final_layer: (batch size, hidden size)
@@ -34,16 +35,16 @@ class Attention(nn.Module):
 
 
 class DecoderWithAttention(DecoderBase):
-    def __init__(self, dec_feature_size, dec_target_size, hidden_size, 
-                 num_gru_layers, target_indices, dropout, dist_size,
+    def __init__(self, dec_feature_size, dec_target_size, hidden_dim, 
+                 num_gru_layers, dropout, dist_size,
                  probabilistic):
-        super().__init__(dec_target_size, target_indices, dist_size, probabilistic)
-        self.attention_model = Attention(hidden_size, num_gru_layers)
+        super().__init__(dec_target_size, dist_size, probabilistic)
+        self.attention_model = Attention(hidden_dim)
         # GRU takes previous timestep target and weighted sum of encoder hidden states
-        self.gru = nn.GRU(dec_feature_size + hidden_size, hidden_size, num_gru_layers, batch_first=True, dropout=dropout)
+        self.gru = nn.GRU(dec_feature_size + hidden_dim, hidden_dim, num_gru_layers, batch_first=True, dropout=dropout)
         # Output layer takes decoder hidden state output, weighted sum and decoder input
         # Feeding decoder input into the output layer essentially acts as a skip connection
-        self.out = nn.Linear(hidden_size + hidden_size + dec_feature_size, dec_target_size * dist_size)
+        self.out = nn.Linear(hidden_dim + hidden_dim + dec_feature_size, dec_target_size * dist_size)
 
     def run_single_recurrent_step(self, inputs, hidden, enc_outputs):
         # inputs: (batch size, 1, num dec features)
