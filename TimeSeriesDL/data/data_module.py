@@ -11,9 +11,11 @@ from TimeSeriesDL.data.dataset import Dataset
 
 
 class TSDataModule(L.LightningDataModule):
-    def __init__(self, files: str | List[str], data_kwargs: Dict, loader_kwargs: Dict) -> None:
+    def __init__(self, files: str | List[str], data_kwargs: Dict, loader_kwargs: Dict,
+                 batch_size: int = 64) -> None:
         super().__init__()
 
+        self.batch_size = batch_size
         self._data_kwargs = data_kwargs
         self._loader_kwargs = loader_kwargs
 
@@ -64,12 +66,15 @@ class TSDataModule(L.LightningDataModule):
             self._test  = Dataset(path=f_test, **self._data_kwargs)
 
     def train_dataloader(self) -> CombinedLoader:
-        return DataLoader(self._train, **self._loader_kwargs)
+        kwargs = copy.deepcopy(self._loader_kwargs)
+        kwargs["batch_size"] = self.batch_size
+        return DataLoader(self._train, **kwargs)
 
     def val_dataloader(self) -> CombinedLoader:
         # disable shuffle
         kwargs = copy.deepcopy(self._loader_kwargs)
         kwargs["shuffle"] = False
+        kwargs["batch_size"] = self.batch_size
 
         return DataLoader(self._val, **kwargs)
 
@@ -77,5 +82,6 @@ class TSDataModule(L.LightningDataModule):
         # disable shuffle
         kwargs = copy.deepcopy(self._loader_kwargs)
         kwargs["shuffle"] = False
+        kwargs["batch_size"] = self.batch_size
 
         return DataLoader(self._test, **kwargs)

@@ -66,7 +66,7 @@ class Seq2Seq(BaseModel):
         # No sample just reshape if pointwise
         return output.squeeze(-1)
 
-    def _inverse_sigmoid_decay(decay):
+    def _inverse_sigmoid_decay(self, decay):
         # inverse sigmoid decay from https://arxiv.org/pdf/1506.03099.pdf
         def compute(indx):
             return decay / (decay + math.exp(indx / decay))
