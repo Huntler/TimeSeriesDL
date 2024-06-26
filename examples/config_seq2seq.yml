@@ -31,6 +31,7 @@ data:
     - examples/data/train_4.csv
   data_kwargs:
     scaler: normalize
+    decoder_input: true
     sequence_length: 500
     future_steps: 50
   loader_kwargs:

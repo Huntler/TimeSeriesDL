@@ -24,7 +24,18 @@ class Seq2Seq(BaseModel):
                  lr: float = 1e-3):
         super().__init__(loss, optimizer, lr)
         self.encoder = Encoder(in_features, hidden_dim, gru_layers, dropout)
-        self.decoder = DecoderWithAttention() if attention else DecoderVanilla()
+        
+        dec_params = {
+            "dec_feature_size": in_features,
+            "dec_target_size": in_features,
+            "dropout": dropout,
+            "dist_size": 2 if probabilistic else 1,
+            "probabilistic": probabilistic,
+            "num_gru_layers": gru_layers,
+            "hidden_dim": hidden_dim
+        }
+        self.decoder = DecoderWithAttention(**dec_params) if attention else DecoderVanilla(**dec_params)
+        self.decoder.output_sampler(Seq2Seq.sample_from_output)
 
         self._last_activation = get_activation_from_string(out_act)
 
@@ -40,7 +51,7 @@ class Seq2Seq(BaseModel):
         mu = output[:, :, :, 0]
         # softplus to constrain to positive
         sigma = F.softplus(output[:, :, :, 1])
-        return mu, sigma
+        return mu.to(output.device), sigma.to(output.device)
     
     @staticmethod
     def sample_from_output(output):
@@ -52,9 +63,10 @@ class Seq2Seq(BaseModel):
         # No sample just reshape if pointwise
         return output.squeeze(-1)
     
-    def forward(self, enc_inputs, dec_inputs):
+    def forward(self, batch: torch.tensor):
         # enc_inputs: (batch size, input seq length, num enc features)
         # dec_inputs: (batch size, output seq length, num dec features)
+        enc_inputs, dec_inputs = batch
         
         # enc_outputs: (batch size, input seq len, hidden size)
         # hidden: (num gru layers, batch size, hidden dim), ie the last hidden state
@@ -65,25 +77,47 @@ class Seq2Seq(BaseModel):
         
         return outputs
 
-    def compute_loss(self, prediction, target, override_func=None):
+    def _compute_loss(self, prediction, target):
         # prediction: (batch size, dec seq len, num targets, num dist params)
         # target: (batch size, dec seq len, num targets)
         if self.probabilistic:
             mu, sigma = Seq2Seq.get_dist_params(prediction)
             var = sigma ** 2
-            loss = self.loss_func(mu, target, var)
+            loss = self._loss(mu, target, var)
         else:
-            loss = self.loss_func(prediction.squeeze(-1), target)
-        return loss if self.training else loss.item()
+            loss = self._loss(prediction.squeeze(-1), target)
+        return loss
     
-    def optimize(self, prediction, target):
-        # prediction & target: (batch size, seq len, output dim)
-        self.opt.zero_grad()
-        loss = self.compute_loss(prediction, target)
-        loss.backward()
-        if self.grad_clip is not None:
-            torch.nn.utils.clip_grad_norm_(self.parameters(), self.grad_clip)
-        self.opt.step()
-        return loss.item()
+    def training_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        # unpack the batch and hand the input to the model
+        x, y = batch
+        y_hat = self(x)
+
+        # calculate the loss of the model's prediction
+        loss = self._compute_loss(y_hat, y)
+        self.log(f"train/{self._loss_name}", loss)
+
+        # forward the loss to lighning's optimizer
+        return loss
+
+    def test_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        # unpack the batch and hand the input to the model
+        x, y = batch
+        y_hat = self(x)
+
+        # calculate the loss of the model's prediction
+        loss = self._compute_loss(y_hat, y)
+        self.log(f"test/{self._loss_name}", loss)
+        return loss
+
+    def validation_step(self, batch: torch.Tensor, **kwargs) -> torch.Tensor:
+        # unpack the batch and hand the input to the model
+        x, y = batch
+        y_hat = self(x)
+
+        # calculate the loss of the model's prediction
+        loss = self._compute_loss(y_hat, y)
+        self.log(f"validate/{self._loss_name}", loss)
+        return loss
 
 model_register.register_model("Seq2Seq", Seq2Seq)
