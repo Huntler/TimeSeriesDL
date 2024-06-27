@@ -19,15 +19,20 @@ class TSLightningCLI(LightningCLI):
         parser.add_argument("--visualize-layer-0", default=True, action="store_true")
         parser.add_argument("--visualize-test", default=True, action="store_true")
         parser.add_argument("--find-lr", default=False, action="store_true")
+        parser.add_argument("--find-batch-size", default=False, action="store_true")
         parser.add_argument("--save-every", default=1)
 
     def before_fit(self):
         """Method executes before fit automatically.
         """
+        tuner = Tuner(self.trainer)
+        # find best batch size        
+        if self.config.find_batch_size:
+            tuner.scale_batch_size(self.model, mode="power", init_val=128)
+
         # find the best lr rate
         if self.config.find_lr:
-            tuner = Tuner(self.trainer)
-            lr_finder = tuner.lr_find(self.model, self.datamodule, num_training=500, mode="linear",
+            lr_finder = tuner.lr_find(self.model, self.datamodule, num_training=100, mode="linear",
                                       min_lr=1e-8, max_lr=0.3)
             fig = lr_finder.plot(suggest=True)
             fig.show()

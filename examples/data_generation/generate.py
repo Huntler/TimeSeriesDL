@@ -16,7 +16,7 @@ if not args.samples:
     exit(1)
 
 version = int(args.version) if args.version else 0
-path = args.path if args.path else f"examples/data/train_{version + 1}.mat"
+path = args.path if args.path else f"examples/data/train_{version + 1}.csv"
 samples = int(args.samples)
 print(f"Generating version {version}")
 

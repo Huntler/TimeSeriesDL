@@ -1,0 +1,44 @@
+seed_everything: true
+trainer:
+  callbacks: 
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: validate/GaussianNLLLoss
+        min_delta: 0.0001
+        patience: 5
+  precision: 32
+  max_epochs: 25
+  gradient_clip_val: 1.0
+  profiler: "simple"
+  log_every_n_steps: 5
+model:
+  class_path: TimeSeriesDL.model.Seq2Seq
+  init_args:
+    in_features: 5
+    hidden_dim: 64
+    gru_layers: 2
+    dropout: 0.1
+    probabilistic: true
+    attention: false
+    teacher_force_decay: 5
+    out_act: sigmoid
+    loss: GaussianNLLLoss
+    optimizer: Adam
+    lr: 0.0001
+data:
+  batch_size: 128
+  files:
+    - examples/data/train_1.csv
+    - examples/data/train_2.csv
+    - examples/data/train_3.csv
+    - examples/data/train_4.csv
+  data_kwargs:
+    scaler: standardize
+    decoder_input: true
+    sequence_length: 1000
+    future_steps: 5
+  loader_kwargs:
+    shuffle: True
+    num_workers: 0
+    #persistent_workers: true
+    pin_memory: true

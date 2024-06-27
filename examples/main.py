@@ -2,13 +2,13 @@
 from lightning.pytorch.loggers import TensorBoardLogger
 
 # simple demo classes for your convenience
-from TimeSeriesDL.model import ConvLSTM
+from TimeSeriesDL.model import BaseModel
 from TimeSeriesDL.data import TSDataModule
 from TimeSeriesDL.utils import TSLightningCLI
 
 
 def cli_main():
-    cli = TSLightningCLI(ConvLSTM, TSDataModule, run=False)
+    cli = TSLightningCLI(BaseModel, TSDataModule, subclass_mode_model=True, run=False)
 
     # set up the logger
     logger = TensorBoardLogger("lightning_logs", name=cli.model.__class__.__name__)
