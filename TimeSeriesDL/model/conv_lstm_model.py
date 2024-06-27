@@ -69,28 +69,25 @@ class ConvLSTM(BaseModel):
             dropout=dropout if self._lstm_layers > 1 else 0
         )
 
-        self._regressor = torch.nn.Sequential(
-            torch.nn.Linear(
-                self._hidden_dim, self._hidden_dim // 2
-            ),
-            torch.nn.ReLU(),
-            torch.nn.Linear(
-                self._hidden_dim // 2, self._latent_features
-            ),
-            torch.nn.ReLU(),
-            torch.nn.Linear(
-            self._latent_features, self._in_features
+        self._regressors = []
+        for feature in range(self._in_features):
+            feature_regressor = torch.nn.Sequential(
+                torch.nn.Linear(
+                    self._hidden_dim, self._future_steps // 3
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Linear(
+                    self._future_steps // 3, 2 * self._future_steps // 3
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Linear(
+                2 * self._future_steps // 3, self._future_steps
+                )
             )
-        )
 
-    def _reduction_network(self, x: torch.tensor) -> torch.tensor:
-        # reduce the LSTM's output by using a few dense layers
-        x = self._linear_1(x)
-        x = torch.relu(x)
-
-        x = self._linear_2(x)
-        x = self._last_activation(x)
-        return x
+            self._regressors.append(feature_regressor)
+        
+        self._regressor = torch.nn.ModuleList(self._regressors)
 
     def forward(self, batch: torch.tensor):
         # CNN forward pass batch, channels, features, samples
@@ -112,11 +109,12 @@ class ConvLSTM(BaseModel):
         x = torch.relu(hidden[-1])
 
         # reduce the LSTM's output to match it's input
-        x = self._regressor(x)
-        x = self._last_activation(x)
+        out = torch.zeros((x.shape[0], self._future_steps, self._in_features), device=self.device)
+        for i, regressor in enumerate(self._regressors):
+            _x = regressor(x)
+            out[:, :, i] = self._last_activation(_x)
 
-        x = torch.unsqueeze(x, 1)
-        return x
+        return out
 
 
 model_register.register_model("ConvLSTM", ConvLSTM)

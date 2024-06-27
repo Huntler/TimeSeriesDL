@@ -8,7 +8,6 @@ from TimeSeriesDL.utils import TSLightningCLI
 
 
 def cli_main():
-    # TODO: enable loading of other models
     cli = TSLightningCLI(BaseModel, TSDataModule, subclass_mode_model=True, run=False)
 
     # set up the logger

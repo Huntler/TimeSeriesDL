@@ -7,17 +7,19 @@ trainer:
         min_delta: 0.0001
         patience: 5
   precision: 32
-  max_epochs: 15
-  profiler: null #"simple"
+  max_epochs: 50
+  gradient_clip_val: 1.0
+  profiler: "simple"
+  log_every_n_steps: 5
 model:
   class_path: TimeSeriesDL.model.ConvLSTM
   init_args:
     in_features: 5
-    sequence_length: 500
-    future_steps: 1
+    sequence_length: 1000
+    future_steps: 5
     latent_features: 15
     hidden_dim: 64
-    kernel: 15
+    kernel: 21
     lstm_layers: 2
     dropout: 0.0
     out_act: sigmoid
@@ -25,17 +27,18 @@ model:
     optimizer: Adam
     lr: 0.001
 data:
+  batch_size: 512
   files:
     - examples/data/train_1.csv
     - examples/data/train_2.csv
     - examples/data/train_3.csv
     - examples/data/train_4.csv
   data_kwargs:
-    scaler: normalize
-    sequence_length: 500
-    future_steps: 1
+    scaler: standardize
+    sequence_length: 1000
+    future_steps: 5
   loader_kwargs:
-    batch_size: 128
     shuffle: True
-    num_workers: 3
-    persistent_workers: True
+    num_workers: 0
+    #persistent_workers: true
+    pin_memory: true

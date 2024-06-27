@@ -54,7 +54,7 @@ class Seq2Seq(BaseModel):
         mu = output[:, :, :, 0]
         # softplus to constrain to positive
         sigma = F.softplus(output[:, :, :, 1])
-        return mu.to(output.device), sigma.to(output.device)
+        return mu, sigma
     
     @staticmethod
     def sample_from_output(output):
